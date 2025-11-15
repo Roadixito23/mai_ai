@@ -6,4 +6,10 @@ class Config {
 
   // Modelo a usar (puedes cambiarlo por otro disponible en OpenRouter)
   static const String model = 'meta-llama/llama-3.2-3b-instruct:free';
+
+  // Timeout para las peticiones HTTP (en segundos)
+  static const int httpTimeoutSeconds = 30;
+
+  // Límite de caracteres en el input
+  static const int maxInputCharacters = 500;
 }
