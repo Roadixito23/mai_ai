@@ -3,22 +3,29 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 // Configuración de la API
 class Config {
-  // API Key desde variables de entorno (seguro)
-  static String get openRouterApiKey =>
-      dotenv.env['OPENROUTER_API_KEY'] ?? '';
+  // --- GOOGLE AI STUDIO (GEMINI) ---
+  static String get googleApiKey => dotenv.env['GOOGLE_API_KEY'] ?? '';
 
-  static const String apiUrl = 'https://openrouter.ai/api/v1/chat/completions';
+  // Modelos disponibles de Google
+  static const String geminiFlash = 'gemini-1.5-flash';
+  static const String geminiPro = 'gemini-1.5-pro';
 
-  // Modelo predeterminado (cambiado de Llama 3.2 a Gemma 2 por mejor rate limiting)
-  static const String defaultModel = 'google/gemma-2-9b-it:free';
+  // Modelo predeterminado
+  static const String defaultModel = 'gemini-1.5-flash';
 
-  // Clave de almacenamiento en SharedPreferences
+  // Construir URL con API key
+  static String getGoogleApiUrl(String model) {
+    return 'https://generativelanguage.googleapis.com/v1beta/models/$model:generateContent?key=$googleApiKey';
+  }
+
+  // --- OPENROUTER (BACKUP) ---
+  static String get openRouterApiKey => dotenv.env['OPENROUTER_API_KEY'] ?? '';
+  static const String openRouterApiUrl = 'https://openrouter.ai/api/v1/chat/completions';
+
+  // Configuración
+  static const String currentProvider = 'google'; // 'google' o 'openrouter'
   static const String _modelKey = 'selected_ai_model';
-
-  // Timeout para las peticiones HTTP (en segundos)
   static const int httpTimeoutSeconds = 30;
-
-  // Límite de caracteres en el input
   static const int maxInputCharacters = 500;
 
   /// Obtiene el modelo guardado en SharedPreferences
@@ -55,11 +62,9 @@ class Config {
   /// Obtiene el nombre amigable del modelo actual
   static Future<String> getCurrentModelName() async {
     final modelId = await getSavedModel();
-    // Extraer nombre simple del ID
-    final parts = modelId.split('/');
-    if (parts.length > 1) {
-      return parts.last.replaceAll('-instruct:free', '').replaceAll('-', ' ');
-    }
+    // Formatear nombre amigable
+    if (modelId.contains('flash')) return 'Gemini 1.5 Flash';
+    if (modelId.contains('pro')) return 'Gemini 1.5 Pro';
     return modelId;
   }
 }
