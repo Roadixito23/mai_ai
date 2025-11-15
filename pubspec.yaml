@@ -38,7 +38,7 @@ dependencies:
   shared_preferences: ^2.2.2
   flutter_dotenv: ^5.1.0
   speech_to_text: ^7.0.0
-  flutter_tts: ^4.1.0
+  text_to_speech: ^0.2.3  # ← Cambiar a este
   permission_handler: ^11.0.1
 
 dev_dependencies:
