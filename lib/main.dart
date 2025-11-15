@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'pantalla/chat_screen.dart';
 
-void main() {
+Future<void> main() async {
+  // Cargar variables de entorno ANTES de iniciar la app
+  await dotenv.load(fileName: ".env");
+
   runApp(const MyApp());
 }
 
