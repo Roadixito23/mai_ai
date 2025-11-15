@@ -8,6 +8,10 @@ class AIService {
   // Enviar mensaje al chatbot y obtener respuesta
   Future<String> sendMessage(List<Map<String, String>> messages) async {
     try {
+      // Obtener el modelo seleccionado dinámicamente
+      final selectedModel = await Config.getSavedModel();
+      print('🤖 Usando modelo: $selectedModel');
+
       // Agregar el mensaje de sistema con la personalidad de MAI al inicio
       List<Map<String, String>> messagesWithPersonality = [
         MaiPersonalidad.getSystemMessage(),
@@ -22,7 +26,7 @@ class AIService {
               'Authorization': 'Bearer ${Config.openRouterApiKey}',
             },
             body: jsonEncode({
-              'model': Config.model,
+              'model': selectedModel, // Usar modelo dinámico
               'messages': messagesWithPersonality,
             }),
           )

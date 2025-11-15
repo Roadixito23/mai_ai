@@ -3,11 +3,14 @@ import 'package:flutter/services.dart';
 import '../cerebro/ai_service.dart';
 import '../cerebro/persistencia_service.dart';
 import '../cerebro/voice_service.dart';
+import '../cerebro/config.dart';
 import '../modelos/chat_message.dart';
+import '../modelos/ai_model.dart';
 import '../widgets/message_bubble.dart';
 import '../widgets/text_composer.dart';
 import '../widgets/empty_chat_view.dart';
 import '../widgets/typing_indicator.dart';
+import '../widgets/model_selector_dialog.dart';
 
 class ChatScreen extends StatefulWidget {
   const ChatScreen({super.key});
@@ -29,12 +32,21 @@ class _ChatScreenState extends State<ChatScreen> {
   bool _isListening = false;
   bool _isSpeaking = false;
   bool _voiceInitialized = false;
+  String? _currentModelName;
 
   @override
   void initState() {
     super.initState();
     _cargarHistorial();
     _inicializarVoz();
+    _cargarModeloActual();
+  }
+
+  Future<void> _cargarModeloActual() async {
+    final modelName = await Config.getCurrentModelName();
+    setState(() {
+      _currentModelName = modelName;
+    });
   }
 
   Future<void> _cargarHistorial() async {
@@ -252,6 +264,32 @@ class _ChatScreenState extends State<ChatScreen> {
     }
   }
 
+  Future<void> _mostrarSelectorModelo() async {
+    final currentModel = await Config.getSavedModel();
+
+    final selectedModel = await showDialog<AIModel>(
+      context: context,
+      builder: (context) => ModelSelectorDialog(
+        currentModel: currentModel,
+      ),
+    );
+
+    if (selectedModel != null) {
+      await Config.saveModel(selectedModel.id);
+      await _cargarModeloActual();
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('✅ Modelo cambiado a: ${selectedModel.name}'),
+            backgroundColor: Colors.green,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return KeyboardListener(
@@ -267,30 +305,49 @@ class _ChatScreenState extends State<ChatScreen> {
       },
       child: Scaffold(
         appBar: AppBar(
-          title: Row(
+          title: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              CircleAvatar(
-                backgroundColor: Colors.purple[100],
-                radius: 16,
-                child: const Text(
-                  'M',
-                  style: TextStyle(
-                    color: Colors.purple,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 14,
+              Row(
+                children: [
+                  CircleAvatar(
+                    backgroundColor: Colors.purple[100],
+                    radius: 16,
+                    child: const Text(
+                      'M',
+                      style: TextStyle(
+                        color: Colors.purple,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  const Text('Mai'),
+                  if (_voiceMode) ...[
+                    const SizedBox(width: 8),
+                    const Icon(Icons.mic, size: 16, color: Colors.purple),
+                  ],
+                ],
+              ),
+              if (_currentModelName != null)
+                Text(
+                  _currentModelName!,
+                  style: const TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.normal,
                   ),
                 ),
-              ),
-              const SizedBox(width: 8),
-              const Text('Mai'),
-              if (_voiceMode) ...[
-                const SizedBox(width: 8),
-                const Icon(Icons.mic, size: 16, color: Colors.purple),
-              ],
             ],
           ),
           backgroundColor: Theme.of(context).colorScheme.inversePrimary,
           actions: [
+            // Botón de selector de modelo
+            IconButton(
+              icon: const Icon(Icons.auto_awesome),
+              onPressed: _mostrarSelectorModelo,
+              tooltip: 'Cambiar modelo de IA',
+            ),
             // Botón de modo voz
             if (_voiceInitialized)
               IconButton(
