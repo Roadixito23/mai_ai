@@ -7,6 +7,17 @@ import 'mai_personalidad.dart';
 class AIService {
   // Enviar mensaje al chatbot y obtener respuesta
   Future<String> sendMessage(List<Map<String, String>> messages) async {
+
+    // --- INICIO DE BLOQUE DE DEBUG ---
+    final apiKey = Config.openRouterApiKey;
+    if (apiKey.isEmpty) {
+      print('❌ DEBUG ERROR: La variable OPENROUTER_API_KEY está VACÍA.');
+      return 'Error de Configuración: La API key está vacía. Revisa el nombre de la variable en tu archivo .env y REINICIA la app.';
+    } else {
+      print('✅ DEBUG: Key cargada. Parcial: ${apiKey.substring(0, 5)}...${apiKey.substring(apiKey.length - 4)}');
+    }
+    // --- FIN DE BLOQUE DE DEBUG ---
+
     try {
       // Obtener el modelo seleccionado dinámicamente
       final selectedModel = await Config.getSavedModel();
