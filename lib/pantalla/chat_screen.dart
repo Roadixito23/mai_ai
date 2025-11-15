@@ -424,7 +424,15 @@ class _ChatScreenState extends State<ChatScreen> {
                             itemCount: _messages.length,
                             itemBuilder: (context, index) {
                               final message = _messages[index];
-                              return MessageBubble(message: message);
+                              // Animar solo el último mensaje de Mai cuando está hablando
+                              final isLastMaiMessage = !message.isUser &&
+                                                       index == _messages.length - 1;
+                              final shouldAnimate = isLastMaiMessage && _isSpeaking;
+
+                              return MessageBubble(
+                                message: message,
+                                isAnimating: shouldAnimate,
+                              );
                             },
                           ),
                   ),

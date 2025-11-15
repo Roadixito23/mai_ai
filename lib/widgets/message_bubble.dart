@@ -1,17 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../modelos/chat_message.dart';
+import 'mai_animated_avatar.dart';
 
 class MessageBubble extends StatelessWidget {
   final ChatMessage message;
+  final bool isAnimating; // Para animar el avatar cuando Mai está hablando
 
-  const MessageBubble({super.key, required this.message});
-
-  // ASCII art de Mai - rostro femenino adorable
-  static const String maiAvatar = '''
-    ˚ ༘♡ ⋆｡˚
-   ( ◡‿◡ ♡)
-    ╰(*´︶`*)╯''';
+  const MessageBubble({
+    super.key,
+    required this.message,
+    this.isAnimating = false,
+  });
 
   void _copiarMensaje(BuildContext context, String text) {
     Clipboard.setData(ClipboardData(text: text));
@@ -33,24 +33,11 @@ class MessageBubble extends StatelessWidget {
             message.isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Avatar de Mai con ASCII art
+          // Avatar de Mai con ASCII art animado
           if (!message.isUser) ...[
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: Colors.purple[50],
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.purple[200]!, width: 2),
-              ),
-              child: Text(
-                maiAvatar,
-                style: TextStyle(
-                  fontSize: 10,
-                  color: Colors.purple[700],
-                  fontFamily: 'monospace',
-                  height: 1.0,
-                ),
-              ),
+            MaiAnimatedAvatar(
+              isAnimating: isAnimating,
+              fontSize: 10,
             ),
             const SizedBox(width: 12),
           ],
