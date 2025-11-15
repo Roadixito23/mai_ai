@@ -5,69 +5,128 @@ import 'config.dart';
 import 'mai_personalidad.dart';
 
 class AIService {
-  // Enviar mensaje al chatbot y obtener respuesta
+  /// Convertir mensajes de formato OpenAI a formato Google Gemini
+  Map<String, dynamic> _convertToGoogleFormat(List<Map<String, String>> messages) {
+    // Separar system prompt de mensajes de usuario/asistente
+    String systemPrompt = '';
+    List<Map<String, dynamic>> contents = [];
+
+    for (var message in messages) {
+      if (message['role'] == 'system') {
+        systemPrompt = message['content'] ?? '';
+      } else {
+        contents.add({
+          'role': message['role'] == 'assistant' ? 'model' : 'user',
+          'parts': [
+            {'text': message['content']}
+          ]
+        });
+      }
+    }
+
+    Map<String, dynamic> body = {
+      'contents': contents,
+    };
+
+    // Agregar system instruction si existe
+    if (systemPrompt.isNotEmpty) {
+      body['systemInstruction'] = {
+        'parts': [
+          {'text': systemPrompt}
+        ]
+      };
+    }
+
+    return body;
+  }
+
+  /// Enviar mensaje usando Google Gemini
   Future<String> sendMessage(List<Map<String, String>> messages) async {
 
-    // --- INICIO DE BLOQUE DE DEBUG ---
-    final apiKey = Config.openRouterApiKey;
+    // Verificar API key
+    final apiKey = Config.googleApiKey;
     if (apiKey.isEmpty) {
-      print('❌ DEBUG ERROR: La variable OPENROUTER_API_KEY está VACÍA.');
-      return 'Error de Configuración: La API key está vacía. Revisa el nombre de la variable en tu archivo .env y REINICIA la app.';
+      print('❌ DEBUG ERROR: La API key de Google está VACÍA.');
+      return 'Error: La API key de Google está vacía. Revisa tu archivo .env';
     } else {
-      print('✅ DEBUG: Key cargada. Parcial: ${apiKey.substring(0, 5)}...${apiKey.substring(apiKey.length - 4)}');
+      print('✅ DEBUG: Google API Key cargada. Parcial: ${apiKey.substring(0, 6)}...${apiKey.substring(apiKey.length - 4)}');
     }
-    // --- FIN DE BLOQUE DE DEBUG ---
 
     try {
-      // Obtener el modelo seleccionado dinámicamente
       final selectedModel = await Config.getSavedModel();
       print('🤖 Usando modelo: $selectedModel');
+      print('🌐 Proveedor: Google Gemini');
 
-      // Agregar el mensaje de sistema con la personalidad de MAI al inicio
+      // Agregar personalidad de Mai
       List<Map<String, String>> messagesWithPersonality = [
         MaiPersonalidad.getSystemMessage(),
         ...messages,
       ];
 
+      // Convertir al formato de Google
+      final googleBody = _convertToGoogleFormat(messagesWithPersonality);
+
+      print('📤 Enviando petición a Google...');
+
       final response = await http
           .post(
-            Uri.parse(Config.apiUrl),
+            Uri.parse(Config.getGoogleApiUrl(selectedModel)),
             headers: {
               'Content-Type': 'application/json',
-              'Authorization': 'Bearer ${Config.openRouterApiKey}',
+              // NO incluir Authorization header - la key va en la URL
             },
-            body: jsonEncode({
-              'model': selectedModel, // Usar modelo dinámico
-              'messages': messagesWithPersonality,
-            }),
+            body: jsonEncode(googleBody),
           )
           .timeout(
             Duration(seconds: Config.httpTimeoutSeconds),
             onTimeout: () {
-              throw TimeoutException(
-                'La petición tardó demasiado tiempo',
-              );
+              throw TimeoutException('La petición tardó demasiado tiempo');
             },
           );
 
+      print('📡 Status Code: ${response.statusCode}');
+
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        return data['choices'][0]['message']['content'];
-      } else if (response.statusCode == 401) {
-        return 'Oops, parece que hay un problema con la autenticación. Verifica tu API key.';
+
+        // Extraer respuesta del formato de Google
+        if (data['candidates'] != null && data['candidates'].isNotEmpty) {
+          final candidate = data['candidates'][0];
+          if (candidate['content'] != null &&
+              candidate['content']['parts'] != null &&
+              candidate['content']['parts'].isNotEmpty) {
+            final text = candidate['content']['parts'][0]['text'];
+            print('✅ Respuesta recibida correctamente');
+            return text;
+          }
+        }
+
+        print('❌ Formato de respuesta inesperado');
+        print('📡 Response: ${response.body}');
+        return 'Error: Formato de respuesta inesperado de Google';
+
+      } else if (response.statusCode == 400) {
+        print('📡 Error 400: ${response.body}');
+        return 'Error en la petición. Verifica la configuración.';
+      } else if (response.statusCode == 401 || response.statusCode == 403) {
+        print('📡 Error de autenticación: ${response.body}');
+        return 'Error de autenticación. Verifica tu API key de Google.';
       } else if (response.statusCode == 429) {
-        return 'Hey, estamos recibiendo demasiadas peticiones. Espera un momento y vuelve a intentar.';
+        return 'Demasiadas peticiones. Espera un momento.';
       } else if (response.statusCode >= 500) {
-        return 'Uf, parece que el servidor está teniendo problemas. Intenta de nuevo en unos minutos.';
+        return 'El servidor de Google está teniendo problemas. Intenta más tarde.';
       } else {
-        return 'Hmm, algo salió mal (código: ${response.statusCode}). ¿Puedes intentar de nuevo?';
+        print('📡 Error desconocido: ${response.statusCode}');
+        print('📡 Body: ${response.body}');
+        return 'Error ${response.statusCode}. Intenta de nuevo.';
       }
     } on TimeoutException {
-      return 'Oye, la conexión está tardando mucho. Verifica tu internet e intenta de nuevo.';
+      return 'La conexión está tardando mucho. Verifica tu internet.';
     } on http.ClientException {
       return 'No pude conectarme al servidor. ¿Estás conectado a internet?';
     } catch (e) {
-      return 'Ups, ocurrió un error inesperado. Intenta de nuevo en un momento.';
+      print('❌ Error inesperado: $e');
+      return 'Error inesperado. Intenta de nuevo.';
     }
   }
 }

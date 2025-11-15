@@ -33,11 +33,11 @@ class MessageBubble extends StatelessWidget {
             message.isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Avatar de Mai con ASCII art animado
+          // Avatar de Mai animado
           if (!message.isUser) ...[
             MaiAnimatedAvatar(
               isAnimating: isAnimating,
-              fontSize: 10,
+              size: 60,
             ),
             const SizedBox(width: 12),
           ],

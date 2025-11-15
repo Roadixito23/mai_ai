@@ -1,68 +1,33 @@
 import 'package:flutter/material.dart';
-import 'dart:async';
+import 'dart:math' as math;
 
-/// Widget que muestra un avatar animado de Mai con diferentes expresiones ASCII art
-/// que cambian para simular que está hablando
+/// Widget que muestra un avatar animado de Mai
+/// Muestra una "M" cuando está en reposo y un radar circular cuando está generando
 class MaiAnimatedAvatar extends StatefulWidget {
-  final bool isAnimating; // Si está "hablando" o no
-  final double fontSize;
+  final bool isAnimating; // Si está generando mensaje
+  final double size;
 
   const MaiAnimatedAvatar({
     super.key,
     this.isAnimating = false,
-    this.fontSize = 10,
+    this.size = 60,
   });
 
   @override
   State<MaiAnimatedAvatar> createState() => _MaiAnimatedAvatarState();
 }
 
-class _MaiAnimatedAvatarState extends State<MaiAnimatedAvatar> {
-  int _currentExpressionIndex = 0;
-  Timer? _animationTimer;
-
-  // Diferentes expresiones ASCII art de Mai
-  static const List<String> _expressions = [
-    // Expresión normal/feliz
-    '''
-    ˚ ༘♡ ⋆｡˚
-   ( ◡‿◡ ♡)
-    ╰(*´︶\`*)╯''',
-
-    // Expresión hablando 1
-    '''
-    ˚ ༘♡ ⋆｡˚
-   ( ◡ω◡ ♡)
-    ╰(*´︶\`*)╯''',
-
-    // Expresión hablando 2
-    '''
-    ˚ ༘♡ ⋆｡˚
-   ( ◠‿◠ ♡)
-    ╰(*´︶\`*)╯''',
-
-    // Expresión pensando
-    '''
-    ˚ ༘♡ ⋆｡˚
-   ( ◕‿◕ ♡)
-    ╰(*´︶\`*)╯''',
-
-    // Expresión guiño
-    '''
-    ˚ ༘♡ ⋆｡˚
-   ( ^‿^ ♡)
-    ╰(*´︶\`*)╯''',
-
-    // Expresión sonriendo
-    '''
-    ˚ ༘♡ ⋆｡˚
-   ( ◠ᴥ◠ ♡)
-    ╰(*´︶\`*)╯''',
-  ];
+class _MaiAnimatedAvatarState extends State<MaiAnimatedAvatar>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
 
   @override
   void initState() {
     super.initState();
+    _controller = AnimationController(
+      duration: const Duration(milliseconds: 1500),
+      vsync: this,
+    );
     _updateAnimation();
   }
 
@@ -75,41 +40,25 @@ class _MaiAnimatedAvatarState extends State<MaiAnimatedAvatar> {
   }
 
   void _updateAnimation() {
-    _animationTimer?.cancel();
-
     if (widget.isAnimating) {
-      // Cuando está "hablando", cambia de expresión cada 300ms
-      _animationTimer = Timer.periodic(
-        const Duration(milliseconds: 300),
-        (timer) {
-          if (mounted) {
-            setState(() {
-              _currentExpressionIndex =
-                  (_currentExpressionIndex + 1) % _expressions.length;
-            });
-          }
-        },
-      );
+      _controller.repeat();
     } else {
-      // Cuando está en reposo, volver a la expresión normal
-      if (mounted) {
-        setState(() {
-          _currentExpressionIndex = 0;
-        });
-      }
+      _controller.stop();
+      _controller.reset();
     }
   }
 
   @override
   void dispose() {
-    _animationTimer?.cancel();
+    _controller.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(8),
+      width: widget.size,
+      height: widget.size,
       decoration: BoxDecoration(
         color: Colors.purple[50],
         borderRadius: BorderRadius.circular(12),
@@ -117,7 +66,6 @@ class _MaiAnimatedAvatarState extends State<MaiAnimatedAvatar> {
           color: widget.isAnimating ? Colors.purple : Colors.purple[200]!,
           width: widget.isAnimating ? 3 : 2,
         ),
-        // Efecto de brillo cuando está hablando
         boxShadow: widget.isAnimating
             ? [
                 BoxShadow(
@@ -128,15 +76,108 @@ class _MaiAnimatedAvatarState extends State<MaiAnimatedAvatar> {
               ]
             : null,
       ),
-      child: Text(
-        _expressions[_currentExpressionIndex],
-        style: TextStyle(
-          fontSize: widget.fontSize,
-          color: Colors.purple[700],
-          fontFamily: 'monospace',
-          height: 1.0,
-        ),
-      ),
+      child: widget.isAnimating
+          ? AnimatedBuilder(
+              animation: _controller,
+              builder: (context, child) {
+                return CustomPaint(
+                  painter: RadarPainter(
+                    animation: _controller.value,
+                    color: Colors.purple,
+                  ),
+                );
+              },
+            )
+          : Center(
+              child: Text(
+                'M',
+                style: TextStyle(
+                  fontSize: widget.size * 0.6,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.purple[700],
+                ),
+              ),
+            ),
     );
+  }
+}
+
+/// Painter para el efecto de radar circular
+class RadarPainter extends CustomPainter {
+  final double animation;
+  final Color color;
+
+  RadarPainter({
+    required this.animation,
+    required this.color,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+    final maxRadius = size.width / 2 * 0.8;
+
+    // Dibujar 3 ondas expansivas con diferentes fases
+    for (int i = 0; i < 3; i++) {
+      final phaseOffset = i * 0.33;
+      final waveAnimation = (animation + phaseOffset) % 1.0;
+      final radius = maxRadius * waveAnimation;
+      final opacity = 1.0 - waveAnimation;
+
+      final paint = Paint()
+        ..color = color.withOpacity(opacity * 0.5)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2.0;
+
+      canvas.drawCircle(center, radius, paint);
+    }
+
+    // Dibujar círculo central
+    final centerPaint = Paint()
+      ..color = color
+      ..style = PaintingStyle.fill;
+
+    canvas.drawCircle(center, maxRadius * 0.15, centerPaint);
+
+    // Dibujar línea de radar rotando
+    final angle = animation * 2 * math.pi;
+    final radarEnd = Offset(
+      center.dx + maxRadius * math.cos(angle),
+      center.dy + maxRadius * math.sin(angle),
+    );
+
+    final radarPaint = Paint()
+      ..color = color.withOpacity(0.8)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.0;
+
+    canvas.drawLine(center, radarEnd, radarPaint);
+
+    // Efecto de gradiente en la línea del radar
+    final gradientPaint = Paint()
+      ..shader = RadialGradient(
+        colors: [
+          color.withOpacity(0.3),
+          color.withOpacity(0.0),
+        ],
+      ).createShader(Rect.fromCircle(center: radarEnd, radius: maxRadius * 0.3))
+      ..style = PaintingStyle.fill;
+
+    canvas.save();
+    canvas.translate(center.dx, center.dy);
+    canvas.rotate(angle);
+    canvas.drawArc(
+      Rect.fromCircle(center: Offset.zero, radius: maxRadius),
+      -math.pi / 6,
+      math.pi / 3,
+      true,
+      gradientPaint,
+    );
+    canvas.restore();
+  }
+
+  @override
+  bool shouldRepaint(RadarPainter oldDelegate) {
+    return oldDelegate.animation != animation;
   }
 }
