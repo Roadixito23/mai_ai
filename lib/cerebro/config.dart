@@ -13,11 +13,6 @@ class Config {
   // Modelo predeterminado
   static const String defaultModel = 'gemini-pro';
 
-  // Construir URL con API key
-  static String getGoogleApiUrl(String model) {
-    return 'https://generativelanguage.googleapis.com/v1beta/models/$model:generateContent?key=$googleApiKey';
-  }
-
   // --- OPENROUTER (BACKUP) ---
   static String get openRouterApiKey => dotenv.env['OPENROUTER_API_KEY'] ?? '';
   static const String openRouterApiUrl = 'https://openrouter.ai/api/v1/chat/completions';

@@ -1,151 +1,113 @@
-import 'dart:convert';
 import 'dart:async';
-import 'package:http/http.dart' as http;
-import 'config.dart';
-import 'mai_personalidad.dart';
+import 'package:google_generative_ai/google_generative_ai.dart';
+import 'package:mai_ai/cerebro/config.dart';
+import 'package:mai_ai/cerebro/mai_personalidad.dart';
 
 class AIService {
-  /// Convertir mensajes de formato OpenAI a formato Google Gemini
-  Map<String, dynamic> _convertToGoogleFormat(List<Map<String, String>> messages) {
-    // Separar system prompt de mensajes de usuario/asistente
-    String systemPrompt = '';
-    List<Map<String, dynamic>> contents = [];
+  // El modelo se actualizará dinámicamente antes de cada uso
+  late GenerativeModel _client;
+  String _currentModel = Config.defaultModel;
 
-    for (var message in messages) {
-      if (message['role'] == 'system') {
-        systemPrompt = message['content'] ?? '';
-      } else {
-        contents.add({
-          'role': message['role'] == 'assistant' ? 'model' : 'user',
-          'parts': [
-            {'text': message['content']}
-          ]
-        });
-      }
-    }
-
-    Map<String, dynamic> body = {
-      'contents': contents,
-    };
-
-    // Agregar system instruction si existe
-    if (systemPrompt.isNotEmpty) {
-      body['systemInstruction'] = {
-        'parts': [
-          {'text': systemPrompt}
-        ]
-      };
-    }
-
-    return body;
+  // Constructor que inicializa el cliente con la clave API
+  AIService() {
+    _client = GenerativeModel(
+      model: _currentModel,
+      apiKey: Config.googleApiKey,
+    );
   }
 
-  /// Enviar mensaje usando Google Gemini con streaming
+  // Método para actualizar el modelo antes de enviar mensajes
+  Future<void> _updateClientModel() async {
+    final modelId = await Config.getSavedModel();
+    if (modelId != _currentModel) {
+      _currentModel = modelId;
+      // Recrear el cliente con el nuevo modelo
+      _client = GenerativeModel(
+        model: _currentModel,
+        apiKey: Config.googleApiKey,
+      );
+    }
+  }
+
+  /// Convertir mensajes de formato interno a objetos Content del SDK
+  List<Content> _convertToSDKFormat(List<Map<String, String>> messages) {
+    List<Content> history = [];
+
+    for (var message in messages) {
+      // Ignorar mensajes 'system' ya que se manejan por systemInstruction
+      if (message['role'] == 'system') continue;
+
+      // Usar 'user' para el usuario, 'model' para el asistente
+      final role = message['role'] == 'assistant' ? 'model' : 'user';
+      history.add(
+        Content(
+          role,
+          [Part.text(message['content']!)],
+        ),
+      );
+    }
+    return history;
+  }
+
+  /// Enviar mensaje usando Google Gemini con streaming (Implementación con SDK)
   Stream<String> sendMessageStream(List<Map<String, String>> messages) async* {
-    // Verificar API key
-    final apiKey = Config.googleApiKey;
-    if (apiKey.isEmpty) {
-      print('❌ DEBUG ERROR: La API key de Google está VACÍA.');
+    if (Config.googleApiKey.isEmpty) {
       yield 'Error: La API key de Google está vacía. Revisa tu archivo .env';
       return;
     }
 
     try {
-      final selectedModel = await Config.getSavedModel();
-      print('🤖 Usando modelo: $selectedModel');
-      print('🌐 Proveedor: Google Gemini (Streaming)');
+      await _updateClientModel(); // Asegura que el cliente usa el modelo seleccionado
+      print('🤖 Usando modelo: $_currentModel (Vía SDK)');
 
-      // Agregar personalidad de Mai
-      List<Map<String, String>> messagesWithPersonality = [
-        MaiPersonalidad.getSystemMessage(),
-        ...messages,
-      ];
+      // 1. Configurar la petición con la System Instruction (Personalidad)
+      final config = GenerationConfig(
+        temperature: 0.9,
+        topK: 40,
+        topP: 0.95,
+        maxOutputTokens: 8192,
+      );
 
-      // Convertir al formato de Google
-      final googleBody = _convertToGoogleFormat(messagesWithPersonality);
+      // Recrear el cliente con la configuración de system instruction
+      _client = GenerativeModel(
+        model: _currentModel,
+        apiKey: Config.googleApiKey,
+        systemInstruction: Content.system(MaiPersonalidad.systemPrompt),
+        generationConfig: config,
+      );
+
+      // 2. Convertir el historial al formato del SDK
+      final history = _convertToSDKFormat(messages);
 
       print('📤 Enviando petición a Google con streaming...');
 
-      // URL de streaming de Gemini
-      final streamUrl = 'https://generativelanguage.googleapis.com/v1beta/models/$selectedModel:streamGenerateContent?key=$apiKey&alt=sse';
+      // 3. Usar el método de streaming del SDK
+      final responseStream = _client.generateContentStream(history);
 
-      final request = http.Request('POST', Uri.parse(streamUrl));
-      request.headers['Content-Type'] = 'application/json';
-      request.body = jsonEncode(googleBody);
-
-      final client = http.Client();
-      final streamedResponse = await client.send(request).timeout(
+      // 4. Procesar el stream del SDK con timeout
+      await for (var chunk in responseStream.timeout(
         Duration(seconds: Config.httpTimeoutSeconds),
-        onTimeout: () {
-          throw TimeoutException('La petición tardó demasiado tiempo');
-        },
-      );
-
-      print('📡 Status Code: ${streamedResponse.statusCode}');
-
-      if (streamedResponse.statusCode == 200) {
-        await for (var chunk in streamedResponse.stream.transform(utf8.decoder)) {
-          // Procesar cada chunk del stream
-          final lines = chunk.split('\n');
-          for (var line in lines) {
-            if (line.startsWith('data: ')) {
-              final jsonStr = line.substring(6);
-              if (jsonStr.trim().isEmpty) continue;
-
-              try {
-                final data = jsonDecode(jsonStr);
-
-                if (data['candidates'] != null && data['candidates'].isNotEmpty) {
-                  final candidate = data['candidates'][0];
-                  if (candidate['content'] != null &&
-                      candidate['content']['parts'] != null &&
-                      candidate['content']['parts'].isNotEmpty) {
-                    final text = candidate['content']['parts'][0]['text'];
-                    if (text != null && text.isNotEmpty) {
-                      yield text;
-                    }
-                  }
-                }
-              } catch (e) {
-                print('⚠️ Error al parsear chunk: $e');
-              }
-            }
-          }
+      )) {
+        if (chunk.text != null && chunk.text!.isNotEmpty) {
+          yield chunk.text!;
         }
-        client.close();
-        print('✅ Streaming completado');
-      } else if (streamedResponse.statusCode == 400) {
-        yield 'Error en la petición. Verifica la configuración.';
-        client.close();
-      } else if (streamedResponse.statusCode == 401 || streamedResponse.statusCode == 403) {
-        yield 'Error de autenticación. Verifica tu API key de Google.';
-        client.close();
-      } else if (streamedResponse.statusCode == 404) {
-        yield 'Modelo no encontrado. Verifica que el modelo esté disponible.';
-        client.close();
-      } else if (streamedResponse.statusCode == 429) {
-        yield 'Demasiadas peticiones. Espera un momento.';
-        client.close();
-      } else if (streamedResponse.statusCode >= 500) {
-        yield 'El servidor de Google está teniendo problemas. Intenta más tarde.';
-        client.close();
-      } else {
-        yield 'Error ${streamedResponse.statusCode}. Intenta de nuevo.';
-        client.close();
       }
+      print('✅ Streaming completado');
     } on TimeoutException {
-      yield 'La conexión está tardando mucho. Verifica tu internet.';
-    } on http.ClientException {
-      yield 'No pude conectarme al servidor. ¿Estás conectado a internet?';
+      yield 'La conexión está tardando mucho. Verifica tu internet o intenta de nuevo.';
+    } on GenerativeAIException catch (e) {
+      // Manejo de errores específicos del SDK (incluye 404, 403, etc.)
+      print('❌ Error de API (SDK): ${e.message}');
+      yield 'Error de la API: ${e.message}. Verifica tu clave y la disponibilidad del modelo.';
     } catch (e) {
       print('❌ Error inesperado: $e');
       yield 'Error inesperado. Intenta de nuevo.';
     }
   }
 
-  /// Enviar mensaje usando Google Gemini (sin streaming - fallback)
+  /// Enviar mensaje (sin streaming - fallback)
+  /// Este método simplemente llama al stream y recolecta la respuesta.
   Future<String> sendMessage(List<Map<String, String>> messages) async {
-    // Recolectar todo el stream en un solo string
     final buffer = StringBuffer();
     await for (final chunk in sendMessageStream(messages)) {
       buffer.write(chunk);
