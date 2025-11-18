@@ -76,12 +76,36 @@ class _ChatScreenState extends State<ChatScreen> {
       };
     }).toList();
 
-    // Obtener respuesta de la IA
-    String response = await _aiService.sendMessage(apiMessages);
-
-    // Agregar respuesta de la IA
+    // Crear un mensaje vacío para la respuesta de la IA
+    final aiMessageIndex = _messages.length;
     setState(() {
-      _messages.add(ChatMessage(text: response, isUser: false));
+      _messages.add(ChatMessage(text: '', isUser: false));
+    });
+
+    // Obtener respuesta de la IA con streaming
+    final responseBuffer = StringBuffer();
+    try {
+      await for (final chunk in _aiService.sendMessageStream(apiMessages)) {
+        responseBuffer.write(chunk);
+        setState(() {
+          _messages[aiMessageIndex] = ChatMessage(
+            text: responseBuffer.toString(),
+            isUser: false,
+          );
+        });
+        _scrollToBottom();
+      }
+    } catch (e) {
+      print('❌ Error en streaming: $e');
+      setState(() {
+        _messages[aiMessageIndex] = ChatMessage(
+          text: 'Error al recibir respuesta. Intenta de nuevo.',
+          isUser: false,
+        );
+      });
+    }
+
+    setState(() {
       _isLoading = false;
     });
 
@@ -90,7 +114,7 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   void _scrollToBottom() {
-    Future.delayed(const Duration(milliseconds: 100), () {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_scrollController.hasClients) {
         _scrollController.animateTo(
           _scrollController.position.maxScrollExtent,

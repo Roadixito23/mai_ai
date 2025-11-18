@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
 import '../modelos/chat_message.dart';
 import 'mai_animated_avatar.dart';
 
@@ -70,14 +71,54 @@ class MessageBubble extends StatelessWidget {
                       ),
                     ],
                   ),
-                  child: SelectableText(
-                    message.text,
-                    style: TextStyle(
-                      color: message.isUser ? Colors.white : Colors.black87,
-                      fontSize: 16,
-                      height: 1.4,
-                    ),
-                  ),
+                  child: message.isUser
+                      ? SelectableText(
+                          message.text,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            height: 1.4,
+                          ),
+                        )
+                      : MarkdownBody(
+                          data: message.text,
+                          selectable: true,
+                          styleSheet: MarkdownStyleSheet(
+                            p: const TextStyle(
+                              color: Colors.black87,
+                              fontSize: 16,
+                              height: 1.4,
+                            ),
+                            code: TextStyle(
+                              backgroundColor: Colors.grey[200],
+                              color: Colors.purple[900],
+                              fontFamily: 'monospace',
+                            ),
+                            codeblockDecoration: BoxDecoration(
+                              color: Colors.grey[200],
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            blockquote: TextStyle(
+                              color: Colors.grey[700],
+                              fontStyle: FontStyle.italic,
+                            ),
+                            h1: const TextStyle(
+                              fontSize: 24,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.black87,
+                            ),
+                            h2: const TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.black87,
+                            ),
+                            h3: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.black87,
+                            ),
+                          ),
+                        ),
                 ),
                 const SizedBox(height: 4),
 
