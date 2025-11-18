@@ -34,7 +34,7 @@ class AIService {
     List<Content> history = [];
 
     for (var message in messages) {
-      // Ignorar mensajes 'system' ya que se manejan por systemInstruction
+      // Ignorar mensajes 'system' ya que se manejan por separado
       if (message['role'] == 'system') continue;
 
       // Usar 'user' para el usuario, 'model' para el asistente
@@ -42,7 +42,7 @@ class AIService {
       history.add(
         Content(
           role,
-          [Part.text(message['content']!)],
+          [TextPart(message['content']!)],
         ),
       );
     }
@@ -60,31 +60,60 @@ class AIService {
       await _updateClientModel(); // Asegura que el cliente usa el modelo seleccionado
       print('🤖 Usando modelo: $_currentModel (Vía SDK)');
 
-      // 1. Configurar la petición con la System Instruction (Personalidad)
+      // Configurar la generación con los parámetros deseados
       final config = GenerationConfig(
         temperature: 0.9,
         topK: 40,
         topP: 0.95,
         maxOutputTokens: 8192,
+        // NO incluir systemInstruction aquí - no existe en GenerationConfig
       );
 
-      // Recrear el cliente con la configuración de system instruction
+      // Recrear el cliente con la configuración
       _client = GenerativeModel(
         model: _currentModel,
         apiKey: Config.googleApiKey,
-        systemInstruction: Content.system(MaiPersonalidad.systemPrompt),
         generationConfig: config,
+        // NO incluir systemInstruction aquí tampoco
       );
 
-      // 2. Convertir el historial al formato del SDK
+      // Convertir el historial al formato del SDK
       final history = _convertToSDKFormat(messages);
+
+      // OPCIÓN 1: Incluir el system prompt como parte del primer mensaje del usuario
+      // Esta es la forma más compatible con todas las versiones del SDK
+      List<Content> finalHistory = [];
+
+      if (history.isNotEmpty && history.first.role == 'user') {
+        // Obtener el contenido del primer mensaje del usuario
+        String userMessage = (history.first.parts.first as TextPart).text;
+
+        // Combinar el system prompt con el mensaje del usuario
+        String combinedMessage = '''
+${MaiPersonalidad.systemPrompt}
+
+Usuario: $userMessage''';
+
+        // Crear un nuevo primer mensaje con ambos contenidos
+        finalHistory.add(
+          Content('user', [TextPart(combinedMessage)]),
+        );
+
+        // Agregar el resto del historial (sin el primer mensaje que ya modificamos)
+        for (int i = 1; i < history.length; i++) {
+          finalHistory.add(history[i]);
+        }
+      } else {
+        // Si no hay mensajes o el primero no es del usuario, usar el historial tal cual
+        finalHistory = history;
+      }
 
       print('📤 Enviando petición a Google con streaming...');
 
-      // 3. Usar el método de streaming del SDK
-      final responseStream = _client.generateContentStream(history);
+      // Usar el método de streaming del SDK
+      final responseStream = _client.generateContentStream(finalHistory);
 
-      // 4. Procesar el stream del SDK con timeout
+      // Procesar el stream del SDK con timeout
       await for (var chunk in responseStream.timeout(
         Duration(seconds: Config.httpTimeoutSeconds),
       )) {
