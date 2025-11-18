@@ -6,12 +6,12 @@ class Config {
   // --- GOOGLE AI STUDIO (GEMINI) ---
   static String get googleApiKey => dotenv.env['GOOGLE_API_KEY'] ?? '';
 
-  // Modelos disponibles de Google
-  static const String geminiFlash = 'gemini-1.5-flash';
-  static const String geminiPro = 'gemini-1.5-pro';
+  // Modelos disponibles de Google (versiones estables)
+  static const String geminiFlash = 'gemini-flash';
+  static const String geminiPro = 'gemini-pro';
 
   // Modelo predeterminado
-  static const String defaultModel = 'gemini-1.5-flash';
+  static const String defaultModel = 'gemini-pro';
 
   // Construir URL con API key
   static String getGoogleApiUrl(String model) {
@@ -63,8 +63,8 @@ class Config {
   static Future<String> getCurrentModelName() async {
     final modelId = await getSavedModel();
     // Formatear nombre amigable
-    if (modelId.contains('flash')) return 'Gemini 1.5 Flash';
-    if (modelId.contains('pro')) return 'Gemini 1.5 Pro';
+    if (modelId.contains('flash')) return 'Gemini Flash';
+    if (modelId.contains('pro')) return 'Gemini Pro';
     return modelId;
   }
 }

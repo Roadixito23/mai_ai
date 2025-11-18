@@ -17,16 +17,16 @@ class AIModel {
   static List<AIModel> get availableModels => [
         // --- MODELOS DE GOOGLE (GRATIS) ---
         AIModel(
-          id: 'gemini-1.5-flash',
-          name: 'Gemini 1.5 Flash',
-          description: 'Rápido y eficiente (RECOMENDADO)',
+          id: 'gemini-pro',
+          name: 'Gemini Pro',
+          description: 'Modelo equilibrado y estable (RECOMENDADO)',
           isFree: true,
           provider: 'Google',
         ),
         AIModel(
-          id: 'gemini-1.5-pro',
-          name: 'Gemini 1.5 Pro',
-          description: 'Mejor calidad, más lento',
+          id: 'gemini-flash',
+          name: 'Gemini Flash',
+          description: 'Rápido y eficiente para respuestas generales',
           isFree: true,
           provider: 'Google',
         ),
