@@ -15,7 +15,7 @@ class Config {
 
   // Construir URL con API key
   static String getGoogleApiUrl(String model) {
-    return 'https://generativelanguage.googleapis.com/v1/models/$model:generateContent?key=$googleApiKey';
+    return 'https://generativelanguage.googleapis.com/v1beta/models/$model:generateContent?key=$googleApiKey';
   }
 
   // --- OPENROUTER (BACKUP) ---
