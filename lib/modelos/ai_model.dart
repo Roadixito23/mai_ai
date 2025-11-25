@@ -13,34 +13,44 @@ class AIModel {
     required this.provider,
   });
 
-  // Lista de modelos disponibles
+  // ✅ Lista ACTUALIZADA con modelos disponibles
   static List<AIModel> get availableModels => [
-        // --- MODELOS DE GOOGLE (GRATIS) ---
-        AIModel(
-          id: 'gemini-pro',
-          name: 'Gemini Pro',
-          description: 'Modelo equilibrado y estable (RECOMENDADO)',
-          isFree: true,
-          provider: 'Google',
-        ),
-        AIModel(
-          id: 'gemini-flash',
-          name: 'Gemini Flash',
-          description: 'Rápido y eficiente para respuestas generales',
-          isFree: true,
-          provider: 'Google',
-        ),
-      ];
+    AIModel(
+      id: 'gemini-2.5-flash',
+      name: 'Gemini 2.5 Flash ⚡',
+      description: 'Rápido e inteligente - Recomendado para uso general',
+      isFree: true,
+      provider: 'Google',
+    ),
+    AIModel(
+      id: 'gemini-2.5-pro',
+      name: 'Gemini 2.5 Pro 🚀',
+      description: 'Más potente - Ideal para tareas complejas',
+      isFree: true,
+      provider: 'Google',
+    ),
+    AIModel(
+      id: 'gemini-2.0-flash',
+      name: 'Gemini 2.0 Flash',
+      description: 'Modelo de segunda generación estable',
+      isFree: true,
+      provider: 'Google',
+    ),
+    AIModel(
+      id: 'gemini-2.5-flash-lite',
+      name: 'Gemini 2.5 Flash-Lite',
+      description: 'Ultra rápido y económico',
+      isFree: true,
+      provider: 'Google',
+    ),
+  ];
 
-  // Obtener modelos gratis
   static List<AIModel> get freeModels =>
       availableModels.where((model) => model.isFree).toList();
 
-  // Obtener modelos de pago
   static List<AIModel> get paidModels =>
       availableModels.where((model) => !model.isFree).toList();
 
-  // Buscar modelo por ID
   static AIModel? findById(String id) {
     try {
       return availableModels.firstWhere((model) => model.id == id);
@@ -52,7 +62,7 @@ class AIModel {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      other is AIModel && runtimeType == other.runtimeType && id == other.id;
+          other is AIModel && runtimeType == other.runtimeType && id == other.id;
 
   @override
   int get hashCode => id.hashCode;
