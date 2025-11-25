@@ -6,12 +6,15 @@ class Config {
   // --- GOOGLE AI STUDIO (GEMINI) ---
   static String get googleApiKey => dotenv.env['GOOGLE_API_KEY'] ?? '';
 
-  // Modelos disponibles de Google (versiones estables)
-  static const String geminiFlash = 'gemini-flash';
-  static const String geminiPro = 'gemini-pro';
+  // Modelos disponibles de Google (versiones actuales - Enero 2025)
+  static const String geminiFlash = 'gemini-1.5-flash';
+  static const String geminiFlashLatest = 'gemini-1.5-flash-latest';
+  static const String geminiPro = 'gemini-1.5-pro';
+  static const String geminiProLatest = 'gemini-1.5-pro-latest';
+  static const String gemini2Flash = 'gemini-2.0-flash-exp';
 
-  // Modelo predeterminado
-  static const String defaultModel = 'gemini-pro';
+  // Modelo predeterminado (actualizado)
+  static const String defaultModel = 'gemini-1.5-flash';
 
   // --- OPENROUTER (BACKUP) ---
   static String get openRouterApiKey => dotenv.env['OPENROUTER_API_KEY'] ?? '';
@@ -23,14 +26,29 @@ class Config {
   static const int httpTimeoutSeconds = 30;
   static const int maxInputCharacters = 500;
 
-  /// Obtiene el modelo guardado en SharedPreferences
-  /// Si no hay modelo guardado, devuelve el modelo predeterminado
+  /// Mapa de migración de modelos antiguos a nuevos
+  static const Map<String, String> modelMigrationMap = {
+    'gemini-pro': 'gemini-1.5-pro',        // Modelo Pro anterior -> Pro actual
+    'gemini-flash': 'gemini-1.5-flash',    // Flash anterior -> Flash actual
+    'gemini-ultra': 'gemini-1.5-pro',      // Ultra anterior -> Pro actual
+  };
+
+  /// Obtiene el modelo guardado en SharedPreferences con migración automática
   static Future<String> getSavedModel() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final savedModel = prefs.getString(_modelKey);
+      String? savedModel = prefs.getString(_modelKey);
 
+      // Si hay un modelo guardado, verificar si necesita migración
       if (savedModel != null && savedModel.isNotEmpty) {
+        // Verificar si el modelo necesita migración
+        if (modelMigrationMap.containsKey(savedModel)) {
+          final newModel = modelMigrationMap[savedModel]!;
+          print('📦 Migrando modelo de $savedModel a $newModel');
+          await saveModel(newModel);
+          savedModel = newModel;
+        }
+
         print('📦 Modelo cargado: $savedModel');
         return savedModel;
       }
@@ -58,8 +76,11 @@ class Config {
   static Future<String> getCurrentModelName() async {
     final modelId = await getSavedModel();
     // Formatear nombre amigable
-    if (modelId.contains('flash')) return 'Gemini Flash';
-    if (modelId.contains('pro')) return 'Gemini Pro';
+    if (modelId == 'gemini-1.5-flash') return 'Gemini 1.5 Flash';
+    if (modelId == 'gemini-1.5-flash-latest') return 'Gemini 1.5 Flash (Última)';
+    if (modelId == 'gemini-1.5-pro') return 'Gemini 1.5 Pro';
+    if (modelId == 'gemini-1.5-pro-latest') return 'Gemini 1.5 Pro (Última)';
+    if (modelId == 'gemini-2.0-flash-exp') return 'Gemini 2.0 Flash (Beta)';
     return modelId;
   }
 }
