@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../cerebro/ai_service.dart';
 import '../cerebro/persistencia_service.dart';
+import '../cerebro/tts_service.dart';
 import '../cerebro/config.dart';
 import '../modelos/chat_message.dart';
 import '../modelos/ai_model.dart';
@@ -25,9 +26,11 @@ class _ChatScreenState extends State<ChatScreen> {
   final TextEditingController _textController = TextEditingController();
   final AIService _aiService = AIService();
   final PersistenciaService _persistenciaService = PersistenciaService();
+  final TTSService _ttsService = TTSService();
   final ScrollController _scrollController = ScrollController();
   bool _isLoading = false;
   bool _isLoadingHistory = true;
+  bool _isVoiceMode = false;
   String? _currentModelName;
 
   @override
@@ -97,6 +100,11 @@ class _ChatScreenState extends State<ChatScreen> {
           );
         });
         _scrollToBottom();
+      }
+
+      // Si está en modo voz, convertir la respuesta a audio
+      if (_isVoiceMode && responseBuffer.isNotEmpty) {
+        await _ttsService.speak(responseBuffer.toString());
       }
     } catch (e) {
       print('❌ Error en streaming: $e');
@@ -191,6 +199,30 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
+  void _toggleVoiceMode() {
+    setState(() {
+      _isVoiceMode = !_isVoiceMode;
+    });
+
+    // Detener cualquier reproducción de audio al cambiar de modo
+    if (!_isVoiceMode) {
+      _ttsService.stop();
+    }
+
+    // Mostrar notificación
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          _isVoiceMode
+              ? '🔊 Modo Voz activado - Las respuestas se reproducirán como audio'
+              : '💬 Modo Chat activado - Las respuestas se mostrarán como texto',
+        ),
+        backgroundColor: _isVoiceMode ? Colors.deepPurple : Colors.blue,
+        duration: const Duration(seconds: 2),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -228,6 +260,15 @@ class _ChatScreenState extends State<ChatScreen> {
         ),
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         actions: [
+          // Toggle de modo Chat/Voz
+          IconButton(
+            icon: Icon(
+              _isVoiceMode ? Icons.volume_up : Icons.chat_bubble_outline,
+              color: _isVoiceMode ? Colors.deepPurple : null,
+            ),
+            onPressed: _toggleVoiceMode,
+            tooltip: _isVoiceMode ? 'Cambiar a modo Chat' : 'Cambiar a modo Voz',
+          ),
           // Botón de selector de tema
           IconButton(
             icon: Icon(
@@ -290,6 +331,7 @@ class _ChatScreenState extends State<ChatScreen> {
   void dispose() {
     _textController.dispose();
     _scrollController.dispose();
+    _ttsService.dispose();
     super.dispose();
   }
 }
