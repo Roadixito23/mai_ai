@@ -1,14 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../cerebro/ai_service.dart';
 import '../cerebro/persistencia_service.dart';
 import '../cerebro/config.dart';
 import '../modelos/chat_message.dart';
 import '../modelos/ai_model.dart';
+import '../providers/theme_provider.dart';
 import '../widgets/message_bubble.dart';
 import '../widgets/text_composer.dart';
 import '../widgets/empty_chat_view.dart';
 import '../widgets/typing_indicator.dart';
 import '../widgets/model_selector_dialog.dart';
+import '../widgets/theme_selector_dialog.dart';
 
 class ChatScreen extends StatefulWidget {
   const ChatScreen({super.key});
@@ -181,6 +184,13 @@ class _ChatScreenState extends State<ChatScreen> {
     }
   }
 
+  Future<void> _mostrarSelectorTema() async {
+    await showDialog(
+      context: context,
+      builder: (context) => const ThemeSelectorDialog(),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -218,6 +228,18 @@ class _ChatScreenState extends State<ChatScreen> {
         ),
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         actions: [
+          // Botón de selector de tema
+          IconButton(
+            icon: Icon(
+              Provider.of<ThemeProvider>(context).themeMode == ThemeMode.dark
+                  ? Icons.dark_mode
+                  : Provider.of<ThemeProvider>(context).themeMode == ThemeMode.light
+                      ? Icons.light_mode
+                      : Icons.settings_suggest,
+            ),
+            onPressed: _mostrarSelectorTema,
+            tooltip: 'Cambiar tema',
+          ),
           // Botón de selector de modelo
           IconButton(
             icon: const Icon(Icons.auto_awesome),

@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:provider/provider.dart';
 import 'pantalla/chat_screen.dart';
+import 'providers/theme_provider.dart';
 
 Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
   // Cargar variables de entorno ANTES de iniciar la app
   try {
     await dotenv.load(fileName: ".env");
@@ -12,22 +16,34 @@ Future<void> main() async {
     print(e.toString());
   }
 
-  runApp(const MyApp());
+  // Inicializar el tema
+  final themeProvider = ThemeProvider();
+  await themeProvider.initTheme();
+
+  runApp(MyApp(themeProvider: themeProvider));
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+  final ThemeProvider themeProvider;
+
+  const MyApp({super.key, required this.themeProvider});
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Mai - Asistente IA',
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.purple),
-        useMaterial3: true,
+    return ChangeNotifierProvider.value(
+      value: themeProvider,
+      child: Consumer<ThemeProvider>(
+        builder: (context, themeProvider, _) {
+          return MaterialApp(
+            title: 'Mai - Asistente IA',
+            debugShowCheckedModeBanner: false,
+            theme: ThemeProvider.lightTheme,
+            darkTheme: ThemeProvider.darkTheme,
+            themeMode: themeProvider.themeMode,
+            home: const ChatScreen(),
+          );
+        },
       ),
-      home: const ChatScreen(),
     );
   }
 }
