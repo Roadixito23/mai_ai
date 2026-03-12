@@ -18,7 +18,7 @@ class MessageBubble extends StatelessWidget {
     Clipboard.setData(ClipboardData(text: text));
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
-        content: Text('📋 Mensaje copiado al portapapeles'),
+        content: Text('Mensaje copiado al portapapeles'),
         duration: Duration(seconds: 2),
         backgroundColor: Colors.green,
       ),

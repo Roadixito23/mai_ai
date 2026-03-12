@@ -13,18 +13,18 @@ class AIModel {
     required this.provider,
   });
 
-  // ✅ Lista ACTUALIZADA con modelos disponibles
+  // Lista ACTUALIZADA con modelos disponibles
   static List<AIModel> get availableModels => [
     AIModel(
       id: 'gemini-2.5-flash',
-      name: 'Gemini 2.5 Flash ⚡',
+      name: 'Gemini 2.5 Flash',
       description: 'Rápido e inteligente - Recomendado para uso general',
       isFree: true,
       provider: 'Google',
     ),
     AIModel(
       id: 'gemini-2.5-pro',
-      name: 'Gemini 2.5 Pro 🚀',
+      name: 'Gemini 2.5 Pro',
       description: 'Más potente - Ideal para tareas complejas',
       isFree: true,
       provider: 'Google',

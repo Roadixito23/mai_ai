@@ -25,7 +25,7 @@ class TTSService {
       });
 
       _flutterTts.setErrorHandler((msg) {
-        print('❌ Error TTS: $msg');
+        print('Error TTS: $msg');
         _isSpeaking = false;
       });
 
@@ -33,9 +33,9 @@ class TTSService {
       await _applySettings(_settings);
 
       _isInitialized = true;
-      print('✅ TTS Service inicializado');
+      print('TTS Service inicializado');
     } catch (e) {
-      print('❌ Error inicializando TTS: $e');
+      print('Error inicializando TTS: $e');
     }
   }
 
@@ -55,31 +55,31 @@ class TTSService {
         });
       }
     } catch (e) {
-      print('⚠️ Error aplicando configuración TTS: $e');
+      print('Error aplicando configuración TTS: $e');
     }
   }
 
   /// Actualizar la configuración de voz
   Future<void> updateSettings(VoiceSettings settings) async {
     if (!settings.isValid) {
-      print('⚠️ Configuración de voz inválida, usando valores predeterminados');
+      print('Configuración de voz inválida, usando valores predeterminados');
       return;
     }
 
     _settings = settings;
     await _applySettings(settings);
-    print('✅ Configuración TTS actualizada');
+    print('Configuración TTS actualizada');
   }
 
   /// Convertir texto a voz
   Future<void> speak(String text) async {
     if (!_isInitialized) {
-      print('⚠️ TTS no inicializado, inicializando...');
+      print('TTS no inicializado, inicializando...');
       await _initialize();
     }
 
     if (text.trim().isEmpty) {
-      print('⚠️ Texto vacío, no se puede reproducir');
+      print('Texto vacío, no se puede reproducir');
       return;
     }
 
@@ -89,9 +89,9 @@ class TTSService {
 
       // Reproducir el nuevo texto
       await _flutterTts.speak(text);
-      print('🔊 Reproduciendo texto (${text.length} caracteres)');
+      print('Reproduciendo texto (${text.length} caracteres)');
     } catch (e) {
-      print('❌ Error al reproducir texto: $e');
+      print('Error al reproducir texto: $e');
     }
   }
 
@@ -99,9 +99,9 @@ class TTSService {
   Future<void> pause() async {
     try {
       await _flutterTts.pause();
-      print('⏸️ TTS pausado');
+      print('TTS pausado');
     } catch (e) {
-      print('❌ Error al pausar TTS: $e');
+      print('Error al pausar TTS: $e');
     }
   }
 
@@ -110,9 +110,9 @@ class TTSService {
     try {
       await _flutterTts.stop();
       _isSpeaking = false;
-      print('⏹️ TTS detenido');
+      print('TTS detenido');
     } catch (e) {
-      print('❌ Error al detener TTS: $e');
+      print('Error al detener TTS: $e');
     }
   }
 
@@ -125,7 +125,7 @@ class TTSService {
       final voices = await _flutterTts.getVoices;
       return voices ?? [];
     } catch (e) {
-      print('❌ Error obteniendo voces: $e');
+      print('Error obteniendo voces: $e');
       return [];
     }
   }
@@ -136,7 +136,7 @@ class TTSService {
       final languages = await _flutterTts.getLanguages;
       return languages ?? [];
     } catch (e) {
-      print('❌ Error obteniendo idiomas: $e');
+      print('Error obteniendo idiomas: $e');
       return [];
     }
   }

@@ -2,7 +2,7 @@
 
 Esta carpeta contiene todos los modelos de datos utilizados en la aplicación Mai AI.
 
-## 📚 Lista de Modelos
+##  Lista de Modelos
 
 ### 1. **ChatMessage** (`chat_message.dart`)
 Representa un mensaje individual en el chat.
@@ -190,7 +190,7 @@ if (custom.isValid) {
 
 ---
 
-## 🔄 Migración de Modelos Existentes
+##  Migración de Modelos Existentes
 
 ### ChatMessage
 Se actualizó el modelo `ChatMessage` con los siguientes campos nuevos:
@@ -204,7 +204,7 @@ Se actualizó el modelo `ChatMessage` con los siguientes campos nuevos:
 
 ---
 
-## 📦 Importación
+##  Importación
 
 Puedes importar todos los modelos desde un único archivo:
 
@@ -221,7 +221,7 @@ import 'package:mai_ai/modelos/conversation.dart';
 
 ---
 
-## 🧪 Serialización
+##  Serialización
 
 Todos los modelos incluyen:
 - Método `toJson()`: Para convertir a JSON
@@ -245,7 +245,7 @@ await prefs.setString('message', jsonEncode(json));
 
 ---
 
-## 🎯 Buenas Prácticas
+##  Buenas Prácticas
 
 1. **Usa constructores factory** cuando sea apropiado para crear instancias con valores semánticos
 2. **Usa `copyWith()`** para crear copias modificadas de objetos inmutables
@@ -255,7 +255,7 @@ await prefs.setString('message', jsonEncode(json));
 
 ---
 
-## 📝 Contribuir
+##  Contribuir
 
 Al agregar nuevos modelos:
 1. Crea el archivo en `lib/modelos/`

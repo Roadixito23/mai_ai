@@ -4,13 +4,13 @@ import 'package:shared_preferences/shared_preferences.dart';
 class Config {
   static String get googleApiKey => dotenv.env['GOOGLE_API_KEY'] ?? '';
 
-  // ✅ MODELOS ACTUALIZADOS (Noviembre 2025)
+  // MODELOS ACTUALIZADOS (Noviembre 2025)
   static const String gemini25Flash = 'gemini-2.5-flash';
   static const String gemini25Pro = 'gemini-2.5-pro';
   static const String gemini20Flash = 'gemini-2.0-flash';
   static const String gemini25FlashLite = 'gemini-2.5-flash-lite';
 
-  // ✅ Modelo predeterminado ACTUALIZADO
+  // Modelo predeterminado ACTUALIZADO
   static const String defaultModel = 'gemini-2.5-flash';
 
   static String get openRouterApiKey => dotenv.env['OPENROUTER_API_KEY'] ?? '';
@@ -21,7 +21,7 @@ class Config {
   static const int httpTimeoutSeconds = 30;
   static const int maxInputCharacters = 500;
 
-  // ✅ Mapa de migración ACTUALIZADO
+  // Mapa de migración ACTUALIZADO
   static const Map<String, String> modelMigrationMap = {
     'gemini-pro': 'gemini-2.5-pro',
     'gemini-1.5-pro': 'gemini-2.5-pro',
@@ -41,19 +41,19 @@ class Config {
       if (savedModel != null && savedModel.isNotEmpty) {
         if (modelMigrationMap.containsKey(savedModel)) {
           final newModel = modelMigrationMap[savedModel]!;
-          print('📦 Migrando modelo de $savedModel a $newModel');
+          print('Migrando modelo de $savedModel a $newModel');
           await saveModel(newModel);
           savedModel = newModel;
         }
 
-        print('📦 Modelo cargado: $savedModel');
+        print('Modelo cargado: $savedModel');
         return savedModel;
       }
 
-      print('📦 Usando modelo predeterminado: $defaultModel');
+      print('Usando modelo predeterminado: $defaultModel');
       return defaultModel;
     } catch (e) {
-      print('❌ Error al cargar modelo: $e');
+      print('Error al cargar modelo: $e');
       return defaultModel;
     }
   }
@@ -62,17 +62,17 @@ class Config {
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(_modelKey, modelId);
-      print('💾 Modelo guardado: $modelId');
+      print('Modelo guardado: $modelId');
     } catch (e) {
-      print('❌ Error al guardar modelo: $e');
+      print('Error al guardar modelo: $e');
     }
   }
 
-  // ✅ Nombres amigables ACTUALIZADOS
+  // Nombres amigables ACTUALIZADOS
   static Future<String> getCurrentModelName() async {
     final modelId = await getSavedModel();
-    if (modelId == 'gemini-2.5-flash') return 'Gemini 2.5 Flash ⚡';
-    if (modelId == 'gemini-2.5-pro') return 'Gemini 2.5 Pro 🚀';
+    if (modelId == 'gemini-2.5-flash') return 'Gemini 2.5 Flash';
+    if (modelId == 'gemini-2.5-pro') return 'Gemini 2.5 Pro';
     if (modelId == 'gemini-2.0-flash') return 'Gemini 2.0 Flash';
     if (modelId == 'gemini-2.5-flash-lite') return 'Gemini 2.5 Flash-Lite';
     return modelId;

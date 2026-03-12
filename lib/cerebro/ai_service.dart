@@ -58,7 +58,7 @@ class AIService {
 
     try {
       await _updateClientModel(); // Asegura que el cliente usa el modelo seleccionado
-      print('🤖 Usando modelo: $_currentModel (Vía SDK)');
+      print('Usando modelo: $_currentModel (Vía SDK)');
 
       // Configurar la generación con los parámetros deseados
       final config = GenerationConfig(
@@ -108,7 +108,7 @@ Usuario: $userMessage''';
         finalHistory = history;
       }
 
-      print('📤 Enviando petición a Google con streaming...');
+      print('Enviando petición a Google con streaming...');
 
       // Usar el método de streaming del SDK
       final responseStream = _client.generateContentStream(finalHistory);
@@ -121,15 +121,15 @@ Usuario: $userMessage''';
           yield chunk.text!;
         }
       }
-      print('✅ Streaming completado');
+      print('Streaming completado');
     } on TimeoutException {
       yield 'La conexión está tardando mucho. Verifica tu internet o intenta de nuevo.';
     } on GenerativeAIException catch (e) {
       // Manejo de errores específicos del SDK (incluye 404, 403, etc.)
-      print('❌ Error de API (SDK): ${e.message}');
+      print('Error de API (SDK): ${e.message}');
       yield 'Error de la API: ${e.message}. Verifica tu clave y la disponibilidad del modelo.';
     } catch (e) {
-      print('❌ Error inesperado: $e');
+      print('Error inesperado: $e');
       yield 'Error inesperado. Intenta de nuevo.';
     }
   }

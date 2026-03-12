@@ -2,7 +2,7 @@
 
 Esta guía te ayudará a configurar y usar el asistente de voz de Mai en Windows Desktop.
 
-## 📋 Prerequisitos
+##  Prerequisitos
 
 ### 1. Flutter para Windows Desktop
 
@@ -12,7 +12,7 @@ Asegúrate de tener Flutter instalado y configurado para Windows Desktop:
 flutter doctor
 ```
 
-Debes ver una marca verde (✓) en "Windows Version".
+Debes ver una marca verde () en "Windows Version".
 
 Si no está habilitado, ejecuta:
 
@@ -48,9 +48,9 @@ Windows necesita tener voces en español instaladas para Text-to-Speech:
    - Busca "Español (España)" o "Español (México)"
    - Selecciónalo y haz clic en `Siguiente`
    - Marca las opciones:
-     - ✅ Instalar paquete de idioma
-     - ✅ Texto a voz
-     - ✅ Reconocimiento de voz
+     -  Instalar paquete de idioma
+     -  Texto a voz
+     -  Reconocimiento de voz
    - Haz clic en `Instalar`
 
 3. **Verificar Voces Instaladas**
@@ -70,7 +70,7 @@ Windows necesita tener voces en español instaladas para Text-to-Speech:
    - Selecciona "Configuración de sonido"
    - Ve a "Entrada" y ajusta el volumen del micrófono
 
-## 🚀 Instalación
+##  Instalación
 
 ### 1. Instalar Dependencias
 
@@ -101,7 +101,7 @@ flutter build windows
 
 El ejecutable estará en: `build/windows/runner/Release/mai_ai.exe`
 
-## 🎤 Cómo Usar el Modo Voz
+##  Cómo Usar el Modo Voz
 
 ### Activar Modo Voz
 
@@ -143,14 +143,14 @@ Hay dos formas de activar el modo voz:
 
 ### Indicadores Visuales
 
-- **🎤 Icono de micrófono en el título**: Modo voz está activo
+- ** Icono de micrófono en el título**: Modo voz está activo
 - **Banner morado "Escuchando..."**: Mai está escuchando tu voz
 - **Banner azul "Mai está hablando..."**: Mai está respondiendo con voz
 - **Banner gris "Modo voz activo"**: Modo voz activo pero sin actividad
 - **Botón rojo "Detener"**: Puedes detener la escucha
 - **Botón morado "Presiona para hablar"**: Listo para escuchar
 
-## 🔧 Solución de Problemas
+##  Solución de Problemas
 
 ### El micrófono no funciona
 
@@ -216,13 +216,13 @@ Hay dos formas de activar el modo voz:
 3. Ejecuta `flutter doctor` y soluciona cualquier problema
 4. Actualiza Flutter a la última versión: `flutter upgrade`
 
-## ⌨️ Atajos de Teclado
+##  Atajos de Teclado
 
 | Atajo | Acción |
 |-------|--------|
 | `Ctrl + M` | Activar/Desactivar modo voz |
 
-## 📝 Notas Técnicas
+##  Notas Técnicas
 
 ### Configuración de Voz
 
@@ -246,13 +246,13 @@ La aplicación está configurada con los siguientes parámetros:
 La aplicación genera logs informativos en la consola. Para verlos:
 
 1. Ejecuta la app desde la terminal: `flutter run -d windows`
-2. Observa los mensajes con emojis:
-   - 🎤 Eventos de micrófono
-   - 🗣️ Eventos de voz
-   - ✅ Operaciones exitosas
-   - ❌ Errores
-   - 📊 Cambios de estado
-   - 🎯 Resultados de reconocimiento
+2. Observa los mensajes informativos:
+   -  Eventos de micrófono
+   -  Eventos de voz
+   -  Operaciones exitosas
+   -  Errores
+   -  Cambios de estado
+   -  Resultados de reconocimiento
 
 ### Rendimiento
 
@@ -262,14 +262,14 @@ Para mejor rendimiento:
 - Usa un micrófono de calidad
 - Mantén el volumen del micrófono en un nivel apropiado
 
-## 🔒 Privacidad
+##  Privacidad
 
 - El reconocimiento de voz se procesa localmente en tu dispositivo usando las APIs de Windows
 - Los mensajes de texto se envían a la API de OpenRouter para obtener respuestas de IA
 - No se graban ni almacenan archivos de audio
 - Las conversaciones se guardan localmente usando SharedPreferences
 
-## 🆘 Obtener Ayuda
+##  Obtener Ayuda
 
 Si encuentras problemas:
 
@@ -278,7 +278,7 @@ Si encuentras problemas:
 3. Asegúrate de tener la configuración correcta de Windows
 4. Crea un issue en el repositorio del proyecto
 
-## 📚 Recursos Adicionales
+##  Recursos Adicionales
 
 - [Documentación de Flutter Windows](https://docs.flutter.dev/desktop#windows)
 - [speech_to_text package](https://pub.dev/packages/speech_to_text)
@@ -287,4 +287,4 @@ Si encuentras problemas:
 
 ---
 
-**¡Disfruta conversando con Mai! 🎉**
+**¡Disfruta conversando con Mai! **

@@ -10,9 +10,9 @@ Future<void> main() async {
   // Cargar variables de entorno ANTES de iniciar la app
   try {
     await dotenv.load(fileName: ".env");
-    print('✅ DEBUG: Archivo .env encontrado y cargado.');
+    print('DEBUG: Archivo .env encontrado y cargado.');
   } catch (e) {
-    print('❌ DEBUG ERROR: No se pudo cargar el archivo .env.');
+    print('DEBUG ERROR: No se pudo cargar el archivo .env.');
     print(e.toString());
   }
 

@@ -1,14 +1,14 @@
-# 🎨 Modernización de UI/UX - Mai AI
+#  Modernización de UI/UX - Mai AI
 
 Este documento describe las mejoras implementadas en la interfaz de usuario de Mai AI.
 
-## 📋 Resumen de Cambios
+##  Resumen de Cambios
 
 Se ha realizado una modernización completa del sistema de selección de modelos y se ha agregado soporte para temas claro y oscuro.
 
 ---
 
-## ✨ Nuevas Características
+##  Nuevas Características
 
 ### 1. **Sistema de Temas (Claro/Oscuro)**
 
@@ -16,9 +16,9 @@ Se ha realizado una modernización completa del sistema de selección de modelos
 Nuevo proveedor de estado para gestionar el tema de la aplicación:
 
 - **3 modos de tema:**
-  - 🌞 **Claro:** Interfaz brillante y clara
-  - 🌙 **Oscuro:** Interfaz oscura y relajante
-  - ⚙️ **Sistema:** Sigue la configuración del dispositivo
+  -  **Claro:** Interfaz brillante y clara
+  -  **Oscuro:** Interfaz oscura y relajante
+  -  **Sistema:** Sigue la configuración del dispositivo
 
 - **Persistencia:** El tema seleccionado se guarda en SharedPreferences
 - **Temas personalizados:** Colores y estilos optimizados para cada modo
@@ -56,18 +56,18 @@ Nuevo diálogo para cambiar el tema de forma intuitiva:
 Completamente renovado con diseño moderno:
 
 **Mejoras visuales:**
-- 🎨 **Gradientes dinámicos** que cambian según el tema
-- 📦 **Cards mejoradas** con elevación y bordes redondeados
-- ✨ **Animaciones suaves** al seleccionar modelos
-- 🏷️ **Badges informativos** ("EN USO", "GRATIS", etc.)
-- 💎 **Feature chips** muestran características de cada modelo
+-  **Gradientes dinámicos** que cambian según el tema
+-  **Cards mejoradas** con elevación y bordes redondeados
+-  **Animaciones suaves** al seleccionar modelos
+-  **Badges informativos** ("EN USO", "GRATIS", etc.)
+-  **Feature chips** muestran características de cada modelo
 
 **Características de cada modelo:**
 
 | Modelo | Características |
 |--------|----------------|
-| **Gemini 2.5 Flash** ⚡ | Ultra Rápido, Recomendado |
-| **Gemini 2.5 Pro** 🚀 | Más Potente, Razonamiento Avanzado |
+| **Gemini 2.5 Flash**  | Ultra Rápido, Recomendado |
+| **Gemini 2.5 Pro**  | Más Potente, Razonamiento Avanzado |
 | **Gemini 2.0 Flash** | Estable |
 | **Gemini 2.5 Flash-Lite** | Económico, Ligero |
 
@@ -78,7 +78,7 @@ Completamente renovado con diseño moderno:
 
 ---
 
-## 🔧 Integración en la Aplicación
+##  Integración en la Aplicación
 
 ### Actualización de main.dart
 
@@ -110,7 +110,7 @@ Se agregaron nuevas funcionalidades:
 
 ---
 
-## 📦 Dependencias Agregadas
+##  Dependencias Agregadas
 
 ```yaml
 dependencies:
@@ -121,28 +121,28 @@ dependencies:
 
 ---
 
-## 🎯 Beneficios de Usuario
+##  Beneficios de Usuario
 
 ### Experiencia Visual
-- ✅ **Consistencia:** Diseño unificado en toda la aplicación
-- ✅ **Accesibilidad:** Temas optimizados para diferentes condiciones de luz
-- ✅ **Personalización:** Usuario puede elegir su preferencia de tema
-- ✅ **Claridad:** Información mejor organizada y más fácil de leer
+-  **Consistencia:** Diseño unificado en toda la aplicación
+-  **Accesibilidad:** Temas optimizados para diferentes condiciones de luz
+-  **Personalización:** Usuario puede elegir su preferencia de tema
+-  **Claridad:** Información mejor organizada y más fácil de leer
 
 ### Selección de Modelos
-- ✅ **Información clara:** Características visibles de cada modelo
-- ✅ **Estado actual:** Badge "EN USO" muestra el modelo activo
-- ✅ **Decisión informada:** Descripciones y features ayudan a elegir
-- ✅ **Feedback visual:** Animaciones confirman la selección
+-  **Información clara:** Características visibles de cada modelo
+-  **Estado actual:** Badge "EN USO" muestra el modelo activo
+-  **Decisión informada:** Descripciones y features ayudan a elegir
+-  **Feedback visual:** Animaciones confirman la selección
 
 ### Rendimiento
-- ✅ **Persistencia:** Preferencias guardadas entre sesiones
-- ✅ **Animaciones suaves:** Transiciones fluidas sin lag
-- ✅ **Responsive:** Se adapta a diferentes tamaños de pantalla
+-  **Persistencia:** Preferencias guardadas entre sesiones
+-  **Animaciones suaves:** Transiciones fluidas sin lag
+-  **Responsive:** Se adapta a diferentes tamaños de pantalla
 
 ---
 
-## 🚀 Cómo Usar
+##  Cómo Usar
 
 ### Cambiar Tema
 1. Toca el icono de tema en el AppBar (sol/luna/engranaje)
@@ -150,14 +150,14 @@ dependencies:
 3. El tema cambia inmediatamente y se guarda automáticamente
 
 ### Cambiar Modelo
-1. Toca el icono ✨ en el AppBar
+1. Toca el icono  en el AppBar
 2. Revisa las características de cada modelo
 3. Selecciona el modelo deseado
 4. Toca "Seleccionar" para confirmar
 
 ---
 
-## 🎨 Guía de Diseño
+##  Guía de Diseño
 
 ### Paleta de Colores
 
@@ -185,38 +185,38 @@ dependencies:
 
 ---
 
-## 📝 Notas de Desarrollo
+##  Notas de Desarrollo
 
 ### Buenas Prácticas Implementadas
-- ✅ Separación de concerns (Provider pattern)
-- ✅ Widgets reutilizables (`_ModelFeatureChip`, `_ThemeOptionTile`)
-- ✅ Código limpio y bien documentado
-- ✅ Diseño responsive y adaptativo
-- ✅ Animaciones performantes
+-  Separación de concerns (Provider pattern)
+-  Widgets reutilizables (`_ModelFeatureChip`, `_ThemeOptionTile`)
+-  Código limpio y bien documentado
+-  Diseño responsive y adaptativo
+-  Animaciones performantes
 
 ### Consideraciones Futuras
-- 🔮 Agregar más opciones de personalización
-- 🔮 Temas personalizados por usuario
-- 🔮 Sincronización de preferencias en la nube
-- 🔮 Modo de ahorro de batería
+-  Agregar más opciones de personalización
+-  Temas personalizados por usuario
+-  Sincronización de preferencias en la nube
+-  Modo de ahorro de batería
 
 ---
 
-## 📚 Archivos Modificados/Creados
+##  Archivos Modificados/Creados
 
 ### Nuevos Archivos
-- ✨ `lib/providers/theme_provider.dart`
-- ✨ `lib/widgets/theme_selector_dialog.dart`
+-  `lib/providers/theme_provider.dart`
+-  `lib/widgets/theme_selector_dialog.dart`
 
 ### Archivos Modificados
-- 📝 `lib/main.dart` - Integración de ThemeProvider
-- 📝 `lib/pantalla/chat_screen.dart` - Botón de tema y imports
-- 📝 `lib/widgets/model_selector_dialog.dart` - Rediseño completo
-- 📝 `pubspec.yaml` - Dependencia provider
+-  `lib/main.dart` - Integración de ThemeProvider
+-  `lib/pantalla/chat_screen.dart` - Botón de tema y imports
+-  `lib/widgets/model_selector_dialog.dart` - Rediseño completo
+-  `pubspec.yaml` - Dependencia provider
 
 ---
 
-## ✅ Checklist de Implementación
+##  Checklist de Implementación
 
 - [x] Crear ThemeProvider con gestión de estado
 - [x] Implementar temas claro y oscuro
@@ -233,4 +233,4 @@ dependencies:
 **Fecha de implementación:** 2025-11-29
 **Versión:** 1.0.0
 
-🎉 ¡Disfruta de la nueva interfaz modernizada de Mai AI!
+ ¡Disfruta de la nueva interfaz modernizada de Mai AI!

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../cerebro/config.dart';
 
 class TextComposer extends StatefulWidget {
@@ -19,6 +20,7 @@ class TextComposer extends StatefulWidget {
 
 class _TextComposerState extends State<TextComposer> {
   int _currentLength = 0;
+  final FocusNode _focusNode = FocusNode();
 
   @override
   void initState() {
@@ -29,7 +31,22 @@ class _TextComposerState extends State<TextComposer> {
   @override
   void dispose() {
     widget.controller.removeListener(_updateLength);
+    _focusNode.dispose();
     super.dispose();
+  }
+
+  KeyEventResult _handleKeyEvent(FocusNode node, KeyEvent event) {
+    if (event is KeyDownEvent &&
+        event.logicalKey == LogicalKeyboardKey.enter &&
+        !HardwareKeyboard.instance.isShiftPressed &&
+        !widget.isLoading) {
+      final text = widget.controller.text;
+      if (text.trim().isNotEmpty) {
+        widget.onSubmit(text);
+        return KeyEventResult.handled;
+      }
+    }
+    return KeyEventResult.ignored;
   }
 
   void _updateLength() {
@@ -72,23 +89,26 @@ class _TextComposerState extends State<TextComposer> {
           Row(
             children: [
               Expanded(
-                child: TextField(
-                  controller: widget.controller,
-                  onSubmitted: widget.isLoading ? null : widget.onSubmit,
-                  enabled: !widget.isLoading,
-                  maxLength: Config.maxInputCharacters,
-                  maxLines: null,
-                  keyboardType: TextInputType.multiline,
-                  decoration: InputDecoration(
-                    hintText: 'Escribe un mensaje...',
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(24),
+                child: Focus(
+                  focusNode: _focusNode,
+                  onKeyEvent: _handleKeyEvent,
+                  child: TextField(
+                    controller: widget.controller,
+                    enabled: !widget.isLoading,
+                    maxLength: Config.maxInputCharacters,
+                    maxLines: null,
+                    keyboardType: TextInputType.multiline,
+                    decoration: InputDecoration(
+                      hintText: 'Escribe un mensaje...',
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(24),
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 12,
+                      ),
+                      counterText: '', // Ocultar el contador predeterminado
                     ),
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 12,
-                    ),
-                    counterText: '', // Ocultar el contador predeterminado
                   ),
                 ),
               ),

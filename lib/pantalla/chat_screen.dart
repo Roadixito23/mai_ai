@@ -13,6 +13,8 @@ import '../widgets/empty_chat_view.dart';
 import '../widgets/typing_indicator.dart';
 import '../widgets/model_selector_dialog.dart';
 import '../widgets/theme_selector_dialog.dart';
+import '../screens/mai_pet_screen.dart';
+import '../screens/tasks_screen.dart';
 
 class ChatScreen extends StatefulWidget {
   const ChatScreen({super.key});
@@ -107,7 +109,7 @@ class _ChatScreenState extends State<ChatScreen> {
         await _ttsService.speak(responseBuffer.toString());
       }
     } catch (e) {
-      print('❌ Error en streaming: $e');
+      print('Error en streaming: $e');
       setState(() {
         _messages[aiMessageIndex] = ChatMessage(
           text: 'Error al recibir respuesta. Intenta de nuevo.',
@@ -183,7 +185,7 @@ class _ChatScreenState extends State<ChatScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('✅ Modelo cambiado a: ${selectedModel.name}'),
+            content: Text('Modelo cambiado a: ${selectedModel.name}'),
             backgroundColor: Colors.green,
             duration: const Duration(seconds: 3),
           ),
@@ -214,8 +216,8 @@ class _ChatScreenState extends State<ChatScreen> {
       SnackBar(
         content: Text(
           _isVoiceMode
-              ? '🔊 Modo Voz activado - Las respuestas se reproducirán como audio'
-              : '💬 Modo Chat activado - Las respuestas se mostrarán como texto',
+              ? 'Modo Voz activado - Las respuestas se reproducirán como audio'
+              : 'Modo Chat activado - Las respuestas se mostrarán como texto',
         ),
         backgroundColor: _isVoiceMode ? Colors.deepPurple : Colors.blue,
         duration: const Duration(seconds: 2),
@@ -226,28 +228,114 @@ class _ChatScreenState extends State<ChatScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      drawer: Drawer(
+        child: ListView(
+          padding: EdgeInsets.zero,
+          children: [
+            DrawerHeader(
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.inversePrimary,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  CircleAvatar(
+                    backgroundColor: Colors.purple[100],
+                    radius: 28,
+                    child: const Text(
+                      'M',
+                      style: TextStyle(
+                        color: Colors.purple,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 24,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Mai',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                  ),
+                ],
+              ),
+            ),
+            const Divider(),
+            ListTile(
+              leading: Icon(
+                _isVoiceMode ? Icons.volume_up : Icons.chat_bubble_outline,
+                color: _isVoiceMode ? Colors.deepPurple : null,
+              ),
+              title: Text(_isVoiceMode ? 'Modo Voz' : 'Modo Chat'),
+              onTap: () {
+                Navigator.pop(context);
+                _toggleVoiceMode();
+              },
+            ),
+            ListTile(
+              leading: Icon(
+                Provider.of<ThemeProvider>(context).themeMode == ThemeMode.dark
+                    ? Icons.dark_mode
+                    : Provider.of<ThemeProvider>(context).themeMode == ThemeMode.light
+                        ? Icons.light_mode
+                        : Icons.settings_suggest,
+              ),
+              title: const Text('Tema'),
+              onTap: () {
+                Navigator.pop(context);
+                _mostrarSelectorTema();
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.auto_awesome),
+              title: const Text('Modelo de IA'),
+              subtitle: _currentModelName != null ? Text(_currentModelName!) : null,
+              onTap: () {
+                Navigator.pop(context);
+                _mostrarSelectorModelo();
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.task_alt),
+              title: const Text('Tareas'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const TasksScreen()),
+                );
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.face_retouching_natural),
+              title: const Text('mai~'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const MaiPetScreen()),
+                );
+              },
+            ),
+            if (_messages.isNotEmpty) ...[
+              const Divider(),
+              ListTile(
+                leading: const Icon(Icons.delete_outline, color: Colors.red),
+                title: const Text('Limpiar conversación', style: TextStyle(color: Colors.red)),
+                onTap: () {
+                  Navigator.pop(context);
+                  _mostrarDialogoLimpiar();
+                },
+              ),
+            ],
+          ],
+        ),
+      ),
       appBar: AppBar(
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              children: [
-                CircleAvatar(
-                  backgroundColor: Colors.purple[100],
-                  radius: 16,
-                  child: const Text(
-                    'M',
-                    style: TextStyle(
-                      color: Colors.purple,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                const Text('Mai'),
-              ],
-            ),
+            const Text('Mai'),
             if (_currentModelName != null)
               Text(
                 _currentModelName!,
@@ -259,41 +347,6 @@ class _ChatScreenState extends State<ChatScreen> {
           ],
         ),
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        actions: [
-          // Toggle de modo Chat/Voz
-          IconButton(
-            icon: Icon(
-              _isVoiceMode ? Icons.volume_up : Icons.chat_bubble_outline,
-              color: _isVoiceMode ? Colors.deepPurple : null,
-            ),
-            onPressed: _toggleVoiceMode,
-            tooltip: _isVoiceMode ? 'Cambiar a modo Chat' : 'Cambiar a modo Voz',
-          ),
-          // Botón de selector de tema
-          IconButton(
-            icon: Icon(
-              Provider.of<ThemeProvider>(context).themeMode == ThemeMode.dark
-                  ? Icons.dark_mode
-                  : Provider.of<ThemeProvider>(context).themeMode == ThemeMode.light
-                      ? Icons.light_mode
-                      : Icons.settings_suggest,
-            ),
-            onPressed: _mostrarSelectorTema,
-            tooltip: 'Cambiar tema',
-          ),
-          // Botón de selector de modelo
-          IconButton(
-            icon: const Icon(Icons.auto_awesome),
-            onPressed: _mostrarSelectorModelo,
-            tooltip: 'Cambiar modelo de IA',
-          ),
-          if (_messages.isNotEmpty)
-            IconButton(
-              icon: const Icon(Icons.delete_outline),
-              onPressed: _mostrarDialogoLimpiar,
-              tooltip: 'Limpiar conversación',
-            ),
-        ],
       ),
       body: _isLoadingHistory
           ? const Center(child: CircularProgressIndicator())
