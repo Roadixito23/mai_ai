@@ -1,7 +1,10 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import '../modelos/mai_timer.dart';
 import '../modelos/task.dart';
 import '../cerebro/task_service.dart';
+import '../cerebro/timer_service.dart';
+import '../datos/sync_service.dart';
 
 class TasksScreen extends StatefulWidget {
   const TasksScreen({super.key});
@@ -16,11 +19,26 @@ class _TasksScreenState extends State<TasksScreen> {
   DateTime _selectedDate = DateTime.now();
   int _workMinutes = 25;
   int _breakMinutes = 5;
+  StreamSubscription<MaiTimer>? _completionSub;
+  StreamSubscription<Set<String>>? _syncSub;
 
   @override
   void initState() {
     super.initState();
     _loadAll();
+    // Un pomodoro puede terminar con la hoja cerrada: se refleja en la lista.
+    _completionSub = TimerService.shared.completions.listen((_) => _loadTasks());
+    // Y los cambios hechos desde otro dispositivo.
+    _syncSub = SyncService.shared.remoteChanges.listen((tables) {
+      if (tables.contains('tasks')) _loadTasks();
+    });
+  }
+
+  @override
+  void dispose() {
+    _completionSub?.cancel();
+    _syncSub?.cancel();
+    super.dispose();
   }
 
   Future<void> _loadAll() async {
@@ -169,13 +187,6 @@ class _TasksScreenState extends State<TasksScreen> {
         task: task,
         workMinutes: _workMinutes,
         breakMinutes: _breakMinutes,
-        onPomodoroCompleted: () async {
-          final updated = task.copyWith(
-            pomodorosCompleted: task.pomodorosCompleted + 1,
-          );
-          await _service.updateTask(updated);
-          _loadTasks();
-        },
         onSettingsSaved: (work, rest) async {
           await _service.savePomodoroSettings(work, rest);
           setState(() {
@@ -396,14 +407,12 @@ class _PomodoroSheet extends StatefulWidget {
   final Task task;
   final int workMinutes;
   final int breakMinutes;
-  final VoidCallback onPomodoroCompleted;
   final void Function(int work, int rest) onSettingsSaved;
 
   const _PomodoroSheet({
     required this.task,
     required this.workMinutes,
     required this.breakMinutes,
-    required this.onPomodoroCompleted,
     required this.onSettingsSaved,
   });
 
@@ -412,71 +421,83 @@ class _PomodoroSheet extends StatefulWidget {
 }
 
 class _PomodoroSheetState extends State<_PomodoroSheet> {
+  final TimerService _timers = TimerService.shared;
+  final TaskService _taskService = TaskService();
+  late Task _task;
   late int _workMinutes;
   late int _breakMinutes;
-  late int _totalSeconds;
-  late int _remainingSeconds;
-  bool _isRunning = false;
-  bool _isWorking = true;
-  int _completedInSession = 0;
-  Timer? _timer;
+  StreamSubscription<MaiTimer>? _completionSub;
 
   @override
   void initState() {
     super.initState();
+    _task = widget.task;
     _workMinutes = widget.workMinutes;
     _breakMinutes = widget.breakMinutes;
-    _reset();
+    // El servicio suma el pomodoro a la tarea; aquí solo se vuelve a leer.
+    _completionSub = _timers.completions
+        .where((t) => t.taskId == _task.id)
+        .listen((_) => _reloadTask());
   }
 
   @override
   void dispose() {
-    _timer?.cancel();
+    _completionSub?.cancel();
     super.dispose();
   }
 
-  void _reset() {
-    _timer?.cancel();
-    setState(() {
-      _isRunning = false;
-      _isWorking = true;
-      _totalSeconds = _workMinutes * 60;
-      _remainingSeconds = _totalSeconds;
-    });
+  Future<void> _reloadTask() async {
+    final tasks = await _taskService.getTasksForDate(_task.date);
+    final fresh = tasks.where((t) => t.id == _task.id).firstOrNull;
+    if (fresh != null && mounted) setState(() => _task = fresh);
   }
 
-  void _toggle() {
+  /// El estado sale del temporizador guardado, no de variables del widget:
+  /// así la hoja es correcta aunque se cierre y se vuelva a abrir.
+  MaiTimer? get _current => _timers.latestForTask(_task.id);
+
+  bool get _isRunning => _current?.status == TimerStatus.running;
+  bool get _isPaused => _current?.status == TimerStatus.paused;
+
+  bool get _isWorking {
+    final c = _current;
+    if (c == null) return true;
+    if (c.status == TimerStatus.done) return c.kind == TimerKind.pomodoroBreak;
+    return c.kind == TimerKind.pomodoroWork;
+  }
+
+  int get _phaseSeconds => (_isWorking ? _workMinutes : _breakMinutes) * 60;
+
+  int get _totalSeconds {
+    final c = _current;
+    return (_isRunning || _isPaused) ? c!.durationSeconds : _phaseSeconds;
+  }
+
+  int get _remainingSeconds {
+    final c = _current;
+    return (_isRunning || _isPaused) ? c!.remainingAt(_timers.now) : _phaseSeconds;
+  }
+
+  Future<void> _toggle() async {
+    final c = _current;
     if (_isRunning) {
-      _timer?.cancel();
-      setState(() => _isRunning = false);
+      await _timers.pause(c!.id);
+    } else if (_isPaused) {
+      await _timers.resume(c!.id);
     } else {
-      setState(() => _isRunning = true);
-      _timer = Timer.periodic(const Duration(seconds: 1), (_) {
-        if (!mounted) return;
-        setState(() {
-          if (_remainingSeconds > 0) {
-            _remainingSeconds--;
-          } else {
-            _onPhaseEnd();
-          }
-        });
-      });
+      await _timers.start(
+        label: _task.title,
+        seconds: _phaseSeconds,
+        kind: _isWorking ? TimerKind.pomodoroWork : TimerKind.pomodoroBreak,
+        taskId: _task.id,
+        taskDate: _task.date,
+      );
     }
   }
 
-  void _onPhaseEnd() {
-    _timer?.cancel();
-    _isRunning = false;
-    if (_isWorking) {
-      _completedInSession++;
-      widget.onPomodoroCompleted();
-      _isWorking = false;
-      _totalSeconds = _breakMinutes * 60;
-    } else {
-      _isWorking = true;
-      _totalSeconds = _workMinutes * 60;
-    }
-    _remainingSeconds = _totalSeconds;
+  Future<void> _reset() async {
+    final c = _current;
+    if (c != null) await _timers.remove(c.id);
   }
 
   void _showSettingsDialog() async {
@@ -528,13 +549,13 @@ class _PomodoroSheetState extends State<_PomodoroSheet> {
         _workMinutes = tempWork;
         _breakMinutes = tempBreak;
       });
-      _reset();
     }
   }
 
   String get _timeText {
-    final m = _remainingSeconds ~/ 60;
-    final s = _remainingSeconds % 60;
+    final remaining = _remainingSeconds;
+    final m = remaining ~/ 60;
+    final s = remaining % 60;
     return '${m.toString().padLeft(2, '0')}:${s.toString().padLeft(2, '0')}';
   }
 
@@ -544,9 +565,17 @@ class _PomodoroSheetState extends State<_PomodoroSheet> {
 
   @override
   Widget build(BuildContext context) {
+    return ListenableBuilder(
+      listenable: _timers,
+      builder: (context, _) => _buildSheet(context),
+    );
+  }
+
+  Widget _buildSheet(BuildContext context) {
     final theme = Theme.of(context);
-    final totalCompleted = widget.task.pomodorosCompleted + _completedInSession;
-    final totalEstimated = widget.task.estimatedPomodoros;
+    final totalCompleted = _task.pomodorosCompleted;
+    final totalEstimated = _task.estimatedPomodoros;
+    final active = _isRunning || _isPaused;
 
     return Container(
       decoration: BoxDecoration(
@@ -570,7 +599,7 @@ class _PomodoroSheetState extends State<_PomodoroSheet> {
 
           // Titulo de la tarea
           Text(
-            widget.task.title,
+            _task.title,
             style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
             textAlign: TextAlign.center,
             maxLines: 2,
@@ -637,13 +666,13 @@ class _PomodoroSheetState extends State<_PomodoroSheet> {
             children: [
               IconButton.outlined(
                 icon: const Icon(Icons.settings_outlined),
-                onPressed: _isRunning ? null : _showSettingsDialog,
+                onPressed: active ? null : _showSettingsDialog,
                 tooltip: 'Configurar duraciones',
               ),
               const SizedBox(width: 16),
               FilledButton.icon(
                 icon: Icon(_isRunning ? Icons.pause : Icons.play_arrow),
-                label: Text(_isRunning ? 'Pausar' : 'Iniciar'),
+                label: Text(_isRunning ? 'Pausar' : (_isPaused ? 'Continuar' : 'Iniciar')),
                 style: FilledButton.styleFrom(
                   backgroundColor: _phaseColor,
                   minimumSize: const Size(140, 48),
@@ -653,7 +682,7 @@ class _PomodoroSheetState extends State<_PomodoroSheet> {
               const SizedBox(width: 16),
               IconButton.outlined(
                 icon: const Icon(Icons.refresh),
-                onPressed: _reset,
+                onPressed: _current == null ? null : _reset,
                 tooltip: 'Reiniciar',
               ),
             ],

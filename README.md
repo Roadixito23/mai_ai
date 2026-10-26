@@ -1,16 +1,32 @@
-# mai_ai
+# Mai
 
-A new Flutter project.
+Asistente personal en Flutter para Android, Windows y Linux. Chat con Gemini, voz (TTS), tareas con Pomodoro y una mascota animada.
 
-## Getting Started
+## Primer uso
 
-This project is a starting point for a Flutter application.
+1. `flutter pub get`
+2. Copia `env.example.json` a `env.json` y rellénalo (ver *Sincronización*). Está en `.gitignore`.
+3. `flutter run -d <android|windows|linux> --dart-define-from-file=env.json` (VS Code: la configuración "Mai" ya lo incluye).
+4. Al abrir la app, pega tu API key de Gemini (gratis en https://aistudio.google.com/app/apikey). Se guarda cifrada en el dispositivo (Keystore / DPAPI / libsecret) y se puede cambiar desde el menú.
 
-A few resources to get you started if this is your first Flutter project:
+Requisitos por plataforma:
+- **Windows:** activar el Modo desarrollador (`start ms-settings:developers`), Flutter lo necesita para enlazar plugins. Además `flutter_tts` necesita `nuget.exe` en el PATH (`winget install Microsoft.NuGet`).
+- **Android:** aceptar licencias con `flutter doctor --android-licenses`.
+- **Linux:** `sudo apt install libsecret-1-dev libjsoncpp-dev` para el almacén seguro de la key.
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+## Estructura
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+- `lib/cerebro/` lógica: servicio de IA, controlador del chat, persistencia, TTS, tareas.
+- `lib/modelos/` modelos de datos.
+- `lib/screens/`, `lib/widgets/`, `lib/providers/` interfaz.
+- `test/` tests de servicios y controlador (`flutter test`).
+
+## Sincronización (Supabase)
+
+Mai guarda todo en SQLite local (funciona sin conexión) y lo espeja con Supabase cuando hay red. Al ser de un solo usuario no hay pantalla de login: la app entra sola con una cuenta tuya.
+
+1. Supabase > SQL Editor: ejecuta `supabase/0001_schema.sql` y luego `supabase/0002_ignore_stale_writes.sql`.
+2. Supabase > Authentication > Users > *Add user* (marca *Auto Confirm User*). Pon ese correo y contraseña en `OWNER_EMAIL` / `OWNER_PASSWORD` de `env.json`.
+3. En el menú de la app, "Sincronización" muestra el estado y al tocarlo fuerza una sincronización.
+
+Nunca pongas la `secret key` de Supabase en `env.json` ni en la app: solo la URL y la publishable key.

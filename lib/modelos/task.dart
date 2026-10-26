@@ -1,3 +1,5 @@
+import 'package:uuid/uuid.dart';
+
 class Task {
   final String id;
   String title;
@@ -21,7 +23,7 @@ class Task {
     int estimatedPomodoros = 1,
   }) {
     return Task(
-      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      id: const Uuid().v4(),
       title: title,
       date: DateTime(date.year, date.month, date.day),
       estimatedPomodoros: estimatedPomodoros,

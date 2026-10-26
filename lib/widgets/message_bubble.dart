@@ -58,11 +58,18 @@ class MessageBubble extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: message.isUser
                         ? Colors.blue[600]
-                        : Colors.purple[50],
+                        : message.isError
+                            ? Colors.red[50]
+                            : Colors.purple[50],
                     borderRadius: BorderRadius.circular(16),
                     border: message.isUser
                         ? null
-                        : Border.all(color: Colors.purple[200]!, width: 1),
+                        : Border.all(
+                            color: message.isError
+                                ? Colors.red[300]!
+                                : Colors.purple[200]!,
+                            width: 1,
+                          ),
                     boxShadow: [
                       BoxShadow(
                         color: Colors.black.withOpacity(0.1),
@@ -123,6 +130,7 @@ class MessageBubble extends StatelessWidget {
                 const SizedBox(height: 4),
 
                 // Botón de copiar
+                if (!message.isError)
                 Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [

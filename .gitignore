@@ -50,3 +50,5 @@ app.*.map.json
 .env.production
 .env.development
 !.env.example
+# Configuración local de Supabase (URL + publishable key)
+env.json

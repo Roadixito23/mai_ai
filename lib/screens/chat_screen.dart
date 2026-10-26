@@ -1,0 +1,377 @@
+import 'dart:async';
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../cerebro/api_key_store.dart';
+import '../cerebro/chat_controller.dart';
+import '../cerebro/config.dart';
+import '../cerebro/tts_service.dart';
+import '../datos/sync_service.dart';
+import '../modelos/ai_model.dart';
+import '../providers/theme_provider.dart';
+import '../widgets/api_key_dialog.dart';
+import '../widgets/empty_chat_view.dart';
+import '../widgets/message_bubble.dart';
+import '../widgets/model_selector_dialog.dart';
+import '../widgets/text_composer.dart';
+import '../widgets/theme_selector_dialog.dart';
+import '../widgets/typing_indicator.dart';
+import 'mai_pet_screen.dart';
+import 'tasks_screen.dart';
+
+class ChatScreen extends StatefulWidget {
+  const ChatScreen({super.key});
+
+  @override
+  State<ChatScreen> createState() => _ChatScreenState();
+}
+
+class _ChatScreenState extends State<ChatScreen> {
+  final ApiKeyStore _keyStore = ApiKeyStore();
+  final TTSService _ttsService = TTSService();
+  late final ChatController _chat;
+  final TextEditingController _textController = TextEditingController();
+  final ScrollController _scrollController = ScrollController();
+  StreamSubscription<Set<String>>? _syncSub;
+
+  @override
+  void initState() {
+    super.initState();
+    _chat = ChatController(tts: _ttsService);
+    _syncSub = SyncService.shared.remoteChanges.listen((tables) {
+      if (tables.contains('messages')) _chat.reloadFromStorage().then((_) => _scrollToBottom());
+    });
+    _chat.init().then((_) {
+      _scrollToBottom();
+      _askForApiKeyIfMissing();
+    });
+  }
+
+  @override
+  void dispose() {
+    _syncSub?.cancel();
+    _chat.dispose();
+    _textController.dispose();
+    _scrollController.dispose();
+    _ttsService.dispose();
+    super.dispose();
+  }
+
+  Future<void> _askForApiKeyIfMissing() async {
+    if (!mounted || await _keyStore.hasKey()) return;
+    await _mostrarDialogoApiKey();
+  }
+
+  Future<void> _mostrarDialogoApiKey() async {
+    if (!mounted) return;
+    await ApiKeyDialog.show(context, _keyStore);
+  }
+
+  Future<void> _handleSubmit(String text) async {
+    if (text.trim().isEmpty) return;
+    _textController.clear();
+    _scrollToBottom();
+
+    await _chat.send(text);
+    _scrollToBottom();
+
+    final error = _chat.lastError;
+    if (error != null && error.needsApiKey && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(error.userMessage),
+          action: SnackBarAction(
+            label: 'Configurar',
+            onPressed: _mostrarDialogoApiKey,
+          ),
+        ),
+      );
+    }
+  }
+
+  void _scrollToBottom() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_scrollController.hasClients) {
+        _scrollController.animateTo(
+          _scrollController.position.maxScrollExtent,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
+      }
+    });
+  }
+
+  Future<void> _mostrarDialogoLimpiar() async {
+    final confirmar = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Limpiar conversación'),
+        content: const Text('¿Estás seguro de que quieres borrar todo el historial?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancelar'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Limpiar', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmar == true) await _chat.clear();
+  }
+
+  Future<void> _mostrarSelectorModelo() async {
+    final currentModel = await Config.getSavedModel();
+    if (!mounted) return;
+
+    final selectedModel = await showDialog<AIModel>(
+      context: context,
+      builder: (context) => ModelSelectorDialog(currentModel: currentModel),
+    );
+
+    if (selectedModel != null) {
+      await Config.saveModel(selectedModel.id);
+      await _chat.refreshModelName();
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Modelo cambiado a: ${selectedModel.name}'),
+            backgroundColor: Colors.green,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _mostrarSelectorTema() async {
+    await showDialog(
+      context: context,
+      builder: (context) => const ThemeSelectorDialog(),
+    );
+  }
+
+  void _toggleVoiceMode() {
+    _chat.toggleVoiceMode();
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          _chat.isVoiceMode
+              ? 'Modo Voz activado - Las respuestas se reproducirán como audio'
+              : 'Modo Chat activado - Las respuestas se mostrarán como texto',
+        ),
+        backgroundColor: _chat.isVoiceMode ? Colors.deepPurple : Colors.blue,
+        duration: const Duration(seconds: 2),
+      ),
+    );
+  }
+
+  void _abrir(Widget screen) {
+    Navigator.pop(context);
+    Navigator.push(context, MaterialPageRoute(builder: (_) => screen));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ListenableBuilder(
+      listenable: _chat,
+      builder: (context, _) {
+        final messages = _chat.messages;
+        final themeMode = Provider.of<ThemeProvider>(context).themeMode;
+
+        return Scaffold(
+          drawer: Drawer(
+            child: ListView(
+              padding: EdgeInsets.zero,
+              children: [
+                DrawerHeader(
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.inversePrimary,
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      CircleAvatar(
+                        backgroundColor: Colors.purple[100],
+                        radius: 28,
+                        child: const Text(
+                          'M',
+                          style: TextStyle(
+                            color: Colors.purple,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 24,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      const Text(
+                        'Mai',
+                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                      ),
+                    ],
+                  ),
+                ),
+                const Divider(),
+                ListTile(
+                  leading: Icon(
+                    _chat.isVoiceMode ? Icons.volume_up : Icons.chat_bubble_outline,
+                    color: _chat.isVoiceMode ? Colors.deepPurple : null,
+                  ),
+                  title: Text(_chat.isVoiceMode ? 'Modo Voz' : 'Modo Chat'),
+                  onTap: () {
+                    Navigator.pop(context);
+                    _toggleVoiceMode();
+                  },
+                ),
+                ListTile(
+                  leading: Icon(
+                    themeMode == ThemeMode.dark
+                        ? Icons.dark_mode
+                        : themeMode == ThemeMode.light
+                            ? Icons.light_mode
+                            : Icons.settings_suggest,
+                  ),
+                  title: const Text('Tema'),
+                  onTap: () {
+                    Navigator.pop(context);
+                    _mostrarSelectorTema();
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.auto_awesome),
+                  title: const Text('Modelo de IA'),
+                  subtitle: _chat.modelName != null ? Text(_chat.modelName!) : null,
+                  onTap: () {
+                    Navigator.pop(context);
+                    _mostrarSelectorModelo();
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.vpn_key_outlined),
+                  title: const Text('API key de Gemini'),
+                  onTap: () {
+                    Navigator.pop(context);
+                    _mostrarDialogoApiKey();
+                  },
+                ),
+                const _SyncTile(),
+                ListTile(
+                  leading: const Icon(Icons.task_alt),
+                  title: const Text('Tareas'),
+                  onTap: () => _abrir(const TasksScreen()),
+                ),
+                ListTile(
+                  leading: const Icon(Icons.face_retouching_natural),
+                  title: const Text('mai~'),
+                  onTap: () => _abrir(const MaiPetScreen()),
+                ),
+                if (messages.isNotEmpty) ...[
+                  const Divider(),
+                  ListTile(
+                    leading: const Icon(Icons.delete_outline, color: Colors.red),
+                    title: const Text(
+                      'Limpiar conversación',
+                      style: TextStyle(color: Colors.red),
+                    ),
+                    onTap: () {
+                      Navigator.pop(context);
+                      _mostrarDialogoLimpiar();
+                    },
+                  ),
+                ],
+              ],
+            ),
+          ),
+          appBar: AppBar(
+            title: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('Mai'),
+                if (_chat.modelName != null)
+                  Text(
+                    _chat.modelName!,
+                    style: const TextStyle(fontSize: 10, fontWeight: FontWeight.normal),
+                  ),
+              ],
+            ),
+            backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+          ),
+          body: _chat.isLoadingHistory
+              ? const Center(child: CircularProgressIndicator())
+              : Column(
+                  children: [
+                    Expanded(
+                      child: messages.isEmpty
+                          ? const EmptyChatView()
+                          : ListView.builder(
+                              controller: _scrollController,
+                              padding: const EdgeInsets.all(8.0),
+                              itemCount: messages.length,
+                              itemBuilder: (context, index) {
+                                final isStreaming =
+                                    _chat.isLoading && index == messages.length - 1;
+                                return MessageBubble(
+                                  message: messages[index],
+                                  isAnimating: isStreaming,
+                                );
+                              },
+                            ),
+                    ),
+                    if (_chat.isLoading) const TypingIndicator(),
+                    const Divider(height: 1),
+                    TextComposer(
+                      controller: _textController,
+                      onSubmit: _handleSubmit,
+                      isLoading: _chat.isLoading,
+                    ),
+                  ],
+                ),
+        );
+      },
+    );
+  }
+}
+
+
+/// Estado de la sincronización con Supabase; al tocarlo fuerza una sincronización.
+class _SyncTile extends StatelessWidget {
+  const _SyncTile();
+
+  String _subtitle(SyncService sync) {
+    switch (sync.status) {
+      case SyncStatus.disabled:
+        return 'Sin configurar (falta env.json)';
+      case SyncStatus.syncing:
+        return 'Sincronizando…';
+      case SyncStatus.failed:
+        return 'Sin conexión: los cambios quedan pendientes';
+      case SyncStatus.idle:
+        final at = sync.lastSyncAt;
+        if (at == null) return 'Al día';
+        final h = at.hour.toString().padLeft(2, '0');
+        final m = at.minute.toString().padLeft(2, '0');
+        return 'Al día · $h:$m';
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final sync = SyncService.shared;
+    return ListenableBuilder(
+      listenable: sync,
+      builder: (context, _) => ListTile(
+        leading: Icon(
+          sync.status == SyncStatus.failed ? Icons.cloud_off : Icons.cloud_sync_outlined,
+        ),
+        title: const Text('Sincronización'),
+        subtitle: Text(_subtitle(sync)),
+        onTap: sync.status == SyncStatus.syncing ? null : sync.sync,
+      ),
+    );
+  }
+}

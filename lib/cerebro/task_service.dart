@@ -1,52 +1,82 @@
-import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../datos/app_database.dart';
 import '../modelos/task.dart';
 
+/// Tareas guardadas en SQLite. Cada cambio queda marcado para sincronizar.
 class TaskService {
-  static const String _prefix = 'tasks_';
+  TaskService({AppDatabase? db}) : _injected = db;
+
   static const String _workKey = 'pomodoro_work_minutes';
   static const String _breakKey = 'pomodoro_break_minutes';
 
-  String _dayKey(DateTime date) =>
-      '$_prefix${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+  final AppDatabase? _injected;
+
+  // Se resuelve al usarse: TimerService.shared se crea antes de abrir la base.
+  AppDatabase get _store => _injected ?? AppDatabase.instance;
+
+  Task _fromRow(Map<String, Object?> r) => Task(
+        id: r['id'] as String,
+        title: r['title'] as String,
+        date: parseDay(r['date'] as String),
+        isCompleted: (r['is_completed'] as int) == 1,
+        pomodorosCompleted: r['pomodoros_completed'] as int,
+        estimatedPomodoros: r['estimated_pomodoros'] as int,
+      );
 
   Future<List<Task>> getTasksForDate(DateTime date) async {
-    final prefs = await SharedPreferences.getInstance();
-    final raw = prefs.getString(_dayKey(date));
-    if (raw == null) return [];
-    final list = jsonDecode(raw) as List<dynamic>;
-    return list.map((j) => Task.fromJson(j as Map<String, dynamic>)).toList();
-  }
-
-  Future<void> _saveTasksForDate(DateTime date, List<Task> tasks) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(
-      _dayKey(date),
-      jsonEncode(tasks.map((t) => t.toJson()).toList()),
+    final rows = _store.db.select(
+      'SELECT * FROM tasks WHERE date = ? AND deleted_at IS NULL ORDER BY rowid',
+      [dayString(date)],
     );
+    return rows.map(_fromRow).toList();
   }
 
   Future<void> addTask(Task task) async {
-    final tasks = await getTasksForDate(task.date);
-    tasks.add(task);
-    await _saveTasksForDate(task.date, tasks);
+    _store.db.execute(
+      'INSERT INTO tasks (id, title, date, is_completed, pomodoros_completed, '
+      'estimated_pomodoros, updated_at, dirty) VALUES (?, ?, ?, ?, ?, ?, ?, 1)',
+      [
+        task.id,
+        task.title,
+        dayString(task.date),
+        task.isCompleted ? 1 : 0,
+        task.pomodorosCompleted,
+        task.estimatedPomodoros,
+        AppDatabase.nowMs(),
+      ],
+    );
+    _store.notifyLocalChange();
   }
 
   Future<void> updateTask(Task task) async {
-    final tasks = await getTasksForDate(task.date);
-    final i = tasks.indexWhere((t) => t.id == task.id);
-    if (i != -1) {
-      tasks[i] = task;
-      await _saveTasksForDate(task.date, tasks);
-    }
+    _store.db.execute(
+      'UPDATE tasks SET title = ?, date = ?, is_completed = ?, pomodoros_completed = ?, '
+      'estimated_pomodoros = ?, updated_at = ?, dirty = 1 '
+      'WHERE id = ? AND deleted_at IS NULL',
+      [
+        task.title,
+        dayString(task.date),
+        task.isCompleted ? 1 : 0,
+        task.pomodorosCompleted,
+        task.estimatedPomodoros,
+        AppDatabase.nowMs(),
+        task.id,
+      ],
+    );
+    _store.notifyLocalChange();
   }
 
+  /// Borrado lógico: la fila queda para avisar a los demás dispositivos.
   Future<void> deleteTask(Task task) async {
-    final tasks = await getTasksForDate(task.date);
-    tasks.removeWhere((t) => t.id == task.id);
-    await _saveTasksForDate(task.date, tasks);
+    final now = AppDatabase.nowMs();
+    _store.db.execute(
+      'UPDATE tasks SET deleted_at = ?, updated_at = ?, dirty = 1 WHERE id = ?',
+      [now, now, task.id],
+    );
+    _store.notifyLocalChange();
   }
 
+  // La duración del pomodoro es una preferencia de este dispositivo: no se sincroniza.
   Future<({int work, int rest})> getPomodoroSettings() async {
     final prefs = await SharedPreferences.getInstance();
     return (

@@ -1,3 +1,5 @@
+import 'package:uuid/uuid.dart';
+
 class ChatMessage {
   final String id;
   final String text;
@@ -18,7 +20,7 @@ class ChatMessage {
     this.metadata,
     this.tokensUsed,
   })  : timestamp = timestamp ?? DateTime.now(),
-        id = id ?? DateTime.now().millisecondsSinceEpoch.toString();
+        id = id ?? const Uuid().v4();
 
   /// Crear un mensaje del usuario
   factory ChatMessage.user({
