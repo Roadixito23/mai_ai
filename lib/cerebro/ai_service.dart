@@ -112,10 +112,15 @@ class AIService implements ChatBackend, Transcriber {
     try {
       final model = await Config.getSavedModel();
       final now = DateTime.now();
+      final recuerdos = _herramientas?.recuerdosParaPrompt() ?? const <String>[];
       final conversation = <Map<String, dynamic>>[
         {
           'role': 'system',
-          'content': MaiPersonalidad.build(now, herramientas: _herramientas != null),
+          'content': MaiPersonalidad.build(
+            now,
+            herramientas: _herramientas != null,
+            recuerdos: recuerdos,
+          ),
         },
         ...history,
       ];
@@ -146,7 +151,7 @@ class AIService implements ChatBackend, Transcriber {
           toolsSupported = false;
           conversation[0] = {
             'role': 'system',
-            'content': MaiPersonalidad.build(now, herramientas: false),
+            'content': MaiPersonalidad.build(now, herramientas: false, recuerdos: recuerdos),
           };
           round--;
           continue;

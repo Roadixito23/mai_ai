@@ -92,4 +92,11 @@ const List<SyncTable> syncTables = [
     _updatedAt,
     _deletedAt,
   ]),
+  SyncTable('memories', [
+    _id,
+    SyncColumn('text', SyncType.text),
+    SyncColumn('created_at', SyncType.timestamp),
+    _updatedAt,
+    _deletedAt,
+  ]),
 ];

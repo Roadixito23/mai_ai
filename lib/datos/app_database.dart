@@ -16,7 +16,7 @@ class AppDatabase {
     _migrate();
   }
 
-  static const int _schemaVersion = 1;
+  static const int _schemaVersion = 2;
 
   static AppDatabase? _instance;
 
@@ -33,6 +33,10 @@ class AppDatabase {
 
   /// Base en memoria, para tests.
   factory AppDatabase.memory() => AppDatabase._(sqlite3.openInMemory());
+
+  /// Abre (y migra) una base ya creada, para probar las migraciones.
+  @visibleForTesting
+  factory AppDatabase.wrap(Database database) => AppDatabase._(database);
 
   final Database db;
 
@@ -127,6 +131,18 @@ class AppDatabase {
           CREATE TABLE sync_state (
             key TEXT PRIMARY KEY,
             value TEXT NOT NULL
+          )''');
+      }
+      if (current < 2) {
+        // Memoria personal: datos que el usuario le pidió recordar a Mai.
+        db.execute('''
+          CREATE TABLE memories (
+            id TEXT PRIMARY KEY,
+            text TEXT NOT NULL,
+            created_at INTEGER NOT NULL,
+            updated_at INTEGER NOT NULL,
+            deleted_at INTEGER,
+            dirty INTEGER NOT NULL DEFAULT 1
           )''');
       }
     });

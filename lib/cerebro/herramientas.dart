@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import '../datos/app_database.dart';
 import '../modelos/mai_timer.dart';
 import '../modelos/task.dart';
+import 'memoria_service.dart';
 import 'task_service.dart';
 import 'timer_service.dart';
 
@@ -17,17 +18,26 @@ class ResultadoHerramienta {
 /// Acciones que Mai puede ejecutar desde el chat (function calling).
 /// Se apoyan en los mismos servicios que usan las pantallas.
 class Herramientas {
-  Herramientas({TaskService? tasks, TimerService? timers, DateTime Function()? now})
-      : _tasks = tasks ?? TaskService(),
+  Herramientas({
+    TaskService? tasks,
+    TimerService? timers,
+    MemoriaService? memoria,
+    DateTime Function()? now,
+  })  : _tasks = tasks ?? TaskService(),
         _injectedTimers = timers,
+        _memoria = memoria ?? MemoriaService(),
         _now = now ?? DateTime.now;
 
   final TaskService _tasks;
+  final MemoriaService _memoria;
   final TimerService? _injectedTimers;
   final DateTime Function() _now;
 
   // Se resuelve al usarse, igual que AppDatabase.instance en los servicios.
   TimerService get _timers => _injectedTimers ?? TimerService.shared;
+
+  /// Lo que Mai sabe del usuario, para el system prompt.
+  List<String> recuerdosParaPrompt() => [for (final r in _memoria.paraPrompt()) r.text];
 
   /// Definiciones en el formato `tools` de la API compatible con OpenAI.
   List<Map<String, dynamic>> get esquemas => [
@@ -54,6 +64,16 @@ class Herramientas {
         _fn('iniciar_pomodoro', 'Inicia un pomodoro de trabajo para una tarea de hoy.', {
           'titulo': {'type': 'string', 'description': 'Título o parte del título de la tarea.'},
         }, ['titulo']),
+        _fn('recordar', 'Guarda un dato duradero sobre el usuario (gustos, fechas, personas, preferencias). '
+            'Úsala cuando el usuario lo pida o comparta algo que valga la pena recordar.', {
+          'dato': {'type': 'string', 'description': 'El dato en una frase en tercera persona, p. ej. "Su cumpleaños es el 3 de mayo".'},
+        }, ['dato']),
+        _fn('olvidar', 'Borra un dato que Mai recordaba sobre el usuario.', {
+          'texto': {'type': 'string', 'description': 'Palabras del recuerdo a borrar.'},
+        }, ['texto']),
+        _fn('buscar_recuerdos', 'Busca entre todo lo que Mai recuerda del usuario.', {
+          'consulta': {'type': 'string', 'description': 'Palabras a buscar.'},
+        }, ['consulta']),
       ];
 
   static Map<String, dynamic> _fn(
@@ -97,6 +117,12 @@ class Herramientas {
           return await _cancelarTimer(args);
         case 'iniciar_pomodoro':
           return await _iniciarPomodoro(args);
+        case 'recordar':
+          return _recordar(args);
+        case 'olvidar':
+          return _olvidar(args);
+        case 'buscar_recuerdos':
+          return _buscarRecuerdos(args);
       }
       return ResultadoHerramienta({'error': 'Herramienta desconocida: $nombre'});
     } catch (e) {
@@ -218,6 +244,23 @@ class Herramientas {
       'Pomodoro iniciado: ${task.title} (${_duracion(seconds)})',
     );
   }
+
+  ResultadoHerramienta _recordar(Map<String, dynamic> args) {
+    final recuerdo = _memoria.recordar(_texto(args, 'dato'));
+    return ResultadoHerramienta({'ok': true, 'recuerdo': recuerdo.text}, 'Recordado: ${recuerdo.text}');
+  }
+
+  ResultadoHerramienta _olvidar(Map<String, dynamic> args) {
+    final texto = _texto(args, 'texto');
+    final matches = _memoria.buscar(texto);
+    if (matches.length != 1) return _ambiguo('recuerdo', texto, matches.map((r) => r.text));
+    _memoria.olvidar(matches.single.id);
+    return ResultadoHerramienta({'ok': true}, 'Olvidado: ${matches.single.text}');
+  }
+
+  ResultadoHerramienta _buscarRecuerdos(Map<String, dynamic> args) => ResultadoHerramienta({
+        'recuerdos': [for (final r in _memoria.buscar(_texto(args, 'consulta'))) r.text],
+      });
 
   ResultadoHerramienta _ambiguo(String que, String busqueda, Iterable<String> opciones) =>
       ResultadoHerramienta({

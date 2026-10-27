@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mai_ai/cerebro/herramientas.dart';
+import 'package:mai_ai/cerebro/memoria_service.dart';
 import 'package:mai_ai/cerebro/task_service.dart';
 import 'package:mai_ai/cerebro/timer_service.dart';
 import 'package:mai_ai/datos/app_database.dart';
@@ -29,7 +30,12 @@ void main() {
       now: () => clock,
       autoTick: false,
     );
-    tools = Herramientas(tasks: tasks, timers: timers, now: () => clock);
+    tools = Herramientas(
+      tasks: tasks,
+      timers: timers,
+      memoria: MemoriaService(db: db),
+      now: () => clock,
+    );
   });
 
   tearDown(() => db.dispose());

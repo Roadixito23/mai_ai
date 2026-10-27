@@ -7,6 +7,7 @@ import 'package:mai_ai/cerebro/ai_exceptions.dart';
 import 'package:mai_ai/cerebro/ai_service.dart';
 import 'package:mai_ai/cerebro/api_key_store.dart';
 import 'package:mai_ai/cerebro/herramientas.dart';
+import 'package:mai_ai/cerebro/memoria_service.dart';
 import 'package:mai_ai/cerebro/task_service.dart';
 import 'package:mai_ai/datos/app_database.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -86,7 +87,7 @@ void main() {
       return AIService(
         keyStore: _FixedKey(),
         clientFactory: () => client,
-        herramientas: Herramientas(tasks: tasks, now: () => DateTime(2026, 3, 4)),
+        herramientas: Herramientas(tasks: tasks, memoria: MemoriaService(db: db), now: () => DateTime(2026, 3, 4)),
       );
     }
 
@@ -154,7 +155,7 @@ void main() {
       final ai = AIService(
         keyStore: _FixedKey(),
         clientFactory: () => client,
-        herramientas: Herramientas(tasks: tasks),
+        herramientas: Herramientas(tasks: tasks, memoria: MemoriaService(db: db)),
       );
 
       expect(await ai.sendMessageStream([user('hey')]).join(), 'hola');

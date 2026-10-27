@@ -20,6 +20,7 @@ import '../widgets/text_composer.dart';
 import '../widgets/theme_selector_dialog.dart';
 import '../widgets/typing_indicator.dart';
 import 'mai_pet_screen.dart';
+import 'memorias_screen.dart';
 import 'tasks_screen.dart';
 
 class ChatScreen extends StatefulWidget {
@@ -332,6 +333,11 @@ class _ChatScreenState extends State<ChatScreen> {
                   leading: const Icon(Icons.task_alt),
                   title: const Text('Tareas'),
                   onTap: () => _abrir(const TasksScreen()),
+                ),
+                ListTile(
+                  leading: const Icon(Icons.psychology_outlined),
+                  title: const Text('Lo que Mai recuerda'),
+                  onTap: () => _abrir(const MemoriasScreen()),
                 ),
                 ListTile(
                   leading: const Icon(Icons.face_retouching_natural),
