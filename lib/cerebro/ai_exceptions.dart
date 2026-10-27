@@ -14,9 +14,9 @@ class AIException implements Exception {
   String get userMessage {
     switch (kind) {
       case AIErrorKind.missingApiKey:
-        return 'Todavía no tengo tu API key de Gemini. Agrégala desde el menú para poder responderte.';
+        return 'Todavía no tengo tu API key de Groq. Agrégala desde el menú para poder responderte.';
       case AIErrorKind.invalidApiKey:
-        return 'Tu API key de Gemini no es válida. Revísala desde el menú.';
+        return 'Tu API key de Groq no es válida. Revísala desde el menú.';
       case AIErrorKind.timeout:
         return 'La conexión está tardando demasiado. Intenta de nuevo en un momento.';
       case AIErrorKind.network:

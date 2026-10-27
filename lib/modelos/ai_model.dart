@@ -13,37 +13,50 @@ class AIModel {
     required this.provider,
   });
 
-  // Lista ACTUALIZADA con modelos disponibles
   static List<AIModel> get availableModels => [
     AIModel(
-      id: 'gemini-2.5-flash',
-      name: 'Gemini 2.5 Flash',
-      description: 'Rápido e inteligente - Recomendado para uso general',
+      id: 'llama-3.3-70b-versatile',
+      name: 'Llama 3.3 70B',
+      description: 'Equilibrado e inteligente - Recomendado para uso general',
       isFree: true,
-      provider: 'Google',
+      provider: 'Groq',
     ),
     AIModel(
-      id: 'gemini-2.5-pro',
-      name: 'Gemini 2.5 Pro',
+      id: 'openai/gpt-oss-120b',
+      name: 'GPT-OSS 120B',
       description: 'Más potente - Ideal para tareas complejas',
       isFree: true,
-      provider: 'Google',
+      provider: 'Groq',
     ),
     AIModel(
-      id: 'gemini-2.0-flash',
-      name: 'Gemini 2.0 Flash',
-      description: 'Modelo de segunda generación estable',
+      id: 'openai/gpt-oss-20b',
+      name: 'GPT-OSS 20B',
+      description: 'Rápido y capaz para el día a día',
       isFree: true,
-      provider: 'Google',
+      provider: 'Groq',
     ),
     AIModel(
-      id: 'gemini-2.5-flash-lite',
-      name: 'Gemini 2.5 Flash-Lite',
-      description: 'Ultra rápido y económico',
+      id: 'llama-3.1-8b-instant',
+      name: 'Llama 3.1 8B Instant',
+      description: 'Ultra rápido y ligero',
       isFree: true,
-      provider: 'Google',
+      provider: 'Groq',
     ),
   ];
+
+  /// Modelo devuelto por la API: usa el nombre conocido o deriva uno del id.
+  factory AIModel.fromId(String id, {String provider = 'Groq'}) {
+    final known = findById(id);
+    if (known != null) return known;
+    final slug = id.split('/').last.replaceAll('-', ' ').replaceAll('_', ' ');
+    return AIModel(
+      id: id,
+      name: slug,
+      description: 'Disponible en tu cuenta de $provider',
+      isFree: true,
+      provider: provider,
+    );
+  }
 
   static List<AIModel> get freeModels =>
       availableModels.where((model) => model.isFree).toList();

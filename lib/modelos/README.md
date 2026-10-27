@@ -27,7 +27,7 @@ Representa un mensaje individual en el chat.
 final userMsg = ChatMessage.user(text: 'Hola Mai');
 final aiMsg = ChatMessage.assistant(
   text: 'Hola! ¿Cómo puedo ayudarte?',
-  modelId: 'gemini-2.5-flash',
+  modelId: 'llama-3.3-70b-versatile',
 );
 ```
 
@@ -55,7 +55,7 @@ Representa una conversación completa con Mai.
 ```dart
 final conversation = Conversation.create(
   title: 'Mi primera conversación',
-  modelId: 'gemini-2.5-flash',
+  modelId: 'llama-3.3-70b-versatile',
 );
 
 final updated = conversation.addMessage(
@@ -69,7 +69,7 @@ final updated = conversation.addMessage(
 Representa un modelo de IA disponible.
 
 **Campos principales:**
-- `id`: Identificador del modelo (ej: 'gemini-2.5-flash')
+- `id`: Identificador del modelo (ej: 'llama-3.3-70b-versatile')
 - `name`: Nombre amigable del modelo
 - `description`: Descripción del modelo
 - `isFree`: Indica si el modelo es gratuito
@@ -83,7 +83,7 @@ Representa un modelo de IA disponible.
 
 **Ejemplo:**
 ```dart
-final model = AIModel.findById('gemini-2.5-flash');
+final model = AIModel.findById('llama-3.3-70b-versatile');
 final freeModels = AIModel.freeModels;
 ```
 
@@ -115,7 +115,7 @@ Representa una respuesta estructurada de la IA.
 ```dart
 final response = AIResponse.success(
   text: 'Respuesta de Mai',
-  modelId: 'gemini-2.5-flash',
+  modelId: 'llama-3.3-70b-versatile',
   tokensUsed: 150,
   responseTimeMs: 1500,
 );
@@ -146,7 +146,7 @@ Representa las preferencias del usuario.
 ```dart
 final prefs = UserPreferences.defaults();
 final updated = prefs.copyWith(
-  preferredModelId: 'gemini-2.5-pro',
+  preferredModelId: 'openai/gpt-oss-120b',
   theme: 'dark',
 );
 ```

@@ -2,7 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-/// Guarda la API key de Gemini que introduce cada usuario.
+/// Guarda la API key de Groq que introduce cada usuario.
 ///
 /// Usa el almacén seguro del sistema (Keystore en Android, DPAPI en Windows,
 /// libsecret en Linux). Si el almacén seguro no está disponible (por ejemplo,

@@ -32,7 +32,7 @@ class Conversation {
       messages: [],
       createdAt: now,
       updatedAt: now,
-      modelId: modelId ?? 'gemini-2.5-flash',
+      modelId: modelId ?? 'llama-3.3-70b-versatile',
       isPinned: false,
     );
   }

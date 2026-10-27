@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../cerebro/ai_exceptions.dart';
+import '../cerebro/ai_service.dart';
 import '../cerebro/api_key_store.dart';
 import '../cerebro/chat_controller.dart';
 import '../cerebro/config.dart';
@@ -124,11 +126,18 @@ class _ChatScreenState extends State<ChatScreen> {
 
   Future<void> _mostrarSelectorModelo() async {
     final currentModel = await Config.getSavedModel();
+    var models = AIModel.availableModels;
+    try {
+      final fetched = await AIService(keyStore: _keyStore).listModels();
+      if (fetched.isNotEmpty) models = fetched;
+    } on AIException catch (e) {
+      debugPrint('No se pudo cargar la lista de modelos: $e');
+    }
     if (!mounted) return;
 
     final selectedModel = await showDialog<AIModel>(
       context: context,
-      builder: (context) => ModelSelectorDialog(currentModel: currentModel),
+      builder: (context) => ModelSelectorDialog(currentModel: currentModel, models: models),
     );
 
     if (selectedModel != null) {
@@ -253,7 +262,7 @@ class _ChatScreenState extends State<ChatScreen> {
                 ),
                 ListTile(
                   leading: const Icon(Icons.vpn_key_outlined),
-                  title: const Text('API key de Gemini'),
+                  title: const Text('API key de Groq'),
                   onTap: () {
                     Navigator.pop(context);
                     _mostrarDialogoApiKey();

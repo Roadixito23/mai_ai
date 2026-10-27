@@ -11,7 +11,7 @@ class UserPreferences {
   final bool autoScrollEnabled;
 
   const UserPreferences({
-    this.preferredModelId = 'gemini-2.5-flash',
+    this.preferredModelId = 'llama-3.3-70b-versatile',
     this.theme = 'system',
     this.voiceModeEnabled = false,
     this.language = 'es-ES',
@@ -70,7 +70,7 @@ class UserPreferences {
   /// Crear desde JSON
   factory UserPreferences.fromJson(Map<String, dynamic> json) {
     return UserPreferences(
-      preferredModelId: json['preferredModelId'] as String? ?? 'gemini-2.5-flash',
+      preferredModelId: json['preferredModelId'] as String? ?? 'llama-3.3-70b-versatile',
       theme: json['theme'] as String? ?? 'system',
       voiceModeEnabled: json['voiceModeEnabled'] as bool? ?? false,
       language: json['language'] as String? ?? 'es-ES',

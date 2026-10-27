@@ -1,18 +1,17 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:google_generative_ai/google_generative_ai.dart';
 import 'package:mai_ai/cerebro/ai_service.dart';
 import 'package:mai_ai/modelos/chat_message.dart';
 
 ChatMessage user(String t) => ChatMessage.user(text: t);
 ChatMessage mai(String t) => ChatMessage.assistant(text: t);
 
-String textOf(Content c) => (c.parts.single as TextPart).text;
+String textOf(Map<String, String> m) => m['content']!;
 
 void main() {
   group('AIService.buildHistory', () {
     test('mapea roles user/model en orden', () {
       final h = AIService.buildHistory([user('hola'), mai('hey'), user('qué tal')]);
-      expect(h.map((c) => c.role), ['user', 'model', 'user']);
+      expect(h.map((m) => m['role']), ['user', 'assistant', 'user']);
       expect(h.map(textOf), ['hola', 'hey', 'qué tal']);
     });
 
@@ -35,7 +34,7 @@ void main() {
     test('nunca empieza con un mensaje del modelo', () {
       final msgs = [user('u0'), mai('m1'), user('u2'), mai('m3'), user('u4')];
       final h = AIService.buildHistory(msgs, maxMessages: 4); // corta en m1
-      expect(h.first.role, 'user');
+      expect(h.first['role'], 'user');
       expect(h.map(textOf), ['u2', 'm3', 'u4']);
     });
 

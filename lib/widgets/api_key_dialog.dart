@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../cerebro/api_key_store.dart';
 
-/// Pide la API key de Gemini y la guarda. Devuelve true si se guardó una key.
+/// Pide la API key de Groq y la guarda. Devuelve true si se guardó una key.
 class ApiKeyDialog extends StatefulWidget {
   final ApiKeyStore store;
 
@@ -53,14 +53,14 @@ class _ApiKeyDialogState extends State<ApiKeyDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: const Text('API key de Gemini'),
+      title: const Text('API key de Groq'),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            'Consíguela gratis en aistudio.google.com/app/apikey. '
-            'Se guarda cifrada en este dispositivo y solo se envía a Google.',
+            'Consíguela gratis en console.groq.com/keys. '
+            'Se guarda cifrada en este dispositivo y solo se envía a Groq.',
             style: TextStyle(fontSize: 13),
           ),
           const SizedBox(height: 16),

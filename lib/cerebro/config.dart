@@ -2,12 +2,14 @@ import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class Config {
-  static const String gemini25Flash = 'gemini-2.5-flash';
-  static const String gemini25Pro = 'gemini-2.5-pro';
-  static const String gemini20Flash = 'gemini-2.0-flash';
-  static const String gemini25FlashLite = 'gemini-2.5-flash-lite';
+  static const String llama33Versatile = 'llama-3.3-70b-versatile';
+  static const String llama31Instant = 'llama-3.1-8b-instant';
+  static const String gptOss120b = 'openai/gpt-oss-120b';
+  static const String gptOss20b = 'openai/gpt-oss-20b';
 
-  static const String defaultModel = 'gemini-2.5-flash';
+  static const String defaultModel = llama33Versatile;
+
+  static const String apiBaseUrl = 'https://api.groq.com/openai/v1';
 
   static const String _modelKey = 'selected_ai_model';
   static const int httpTimeoutSeconds = 30;
@@ -16,22 +18,14 @@ class Config {
   /// Mensajes más recientes que se envían al modelo como contexto.
   static const int maxContextMessages = 30;
 
-  static const Map<String, String> modelMigrationMap = {
-    'gemini-pro': 'gemini-2.5-pro',
-    'gemini-1.5-pro': 'gemini-2.5-pro',
-    'gemini-1.5-pro-latest': 'gemini-2.5-pro',
-    'gemini-flash': 'gemini-2.5-flash',
-    'gemini-1.5-flash': 'gemini-2.5-flash',
-    'gemini-1.5-flash-latest': 'gemini-2.5-flash',
-    'gemini-ultra': 'gemini-2.5-pro',
-    'gemini-2.0-flash-exp': 'gemini-2.0-flash',
-  };
+  /// Los ids de Gemini guardados antes del cambio a Groq caen al modelo por defecto.
+  static bool _isLegacyModel(String id) => id.startsWith('gemini');
 
   static const Map<String, String> _modelNames = {
-    gemini25Flash: 'Gemini 2.5 Flash',
-    gemini25Pro: 'Gemini 2.5 Pro',
-    gemini20Flash: 'Gemini 2.0 Flash',
-    gemini25FlashLite: 'Gemini 2.5 Flash-Lite',
+    llama33Versatile: 'Llama 3.3 70B',
+    llama31Instant: 'Llama 3.1 8B Instant',
+    gptOss120b: 'GPT-OSS 120B',
+    gptOss20b: 'GPT-OSS 20B',
   };
 
   static Future<String> getSavedModel() async {
@@ -40,11 +34,10 @@ class Config {
       String? savedModel = prefs.getString(_modelKey);
 
       if (savedModel != null && savedModel.isNotEmpty) {
-        final migrated = modelMigrationMap[savedModel];
-        if (migrated != null) {
-          debugPrint('Migrando modelo de $savedModel a $migrated');
-          await saveModel(migrated);
-          savedModel = migrated;
+        if (_isLegacyModel(savedModel)) {
+          debugPrint('Migrando modelo de $savedModel a $defaultModel');
+          await saveModel(defaultModel);
+          return defaultModel;
         }
         return savedModel;
       }

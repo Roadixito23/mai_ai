@@ -3,10 +3,12 @@ import '../modelos/ai_model.dart';
 
 class ModelSelectorDialog extends StatefulWidget {
   final String currentModel;
+  final List<AIModel> models;
 
   const ModelSelectorDialog({
     super.key,
     required this.currentModel,
+    required this.models,
   });
 
   @override
@@ -65,13 +67,13 @@ class _ModelSelectorDialogState extends State<ModelSelectorDialog> {
   @override
   void initState() {
     super.initState();
-    _selectedModel = AIModel.findById(widget.currentModel);
+    _selectedModel = widget.models.where((m) => m.id == widget.currentModel).firstOrNull;
   }
 
   /// Obtener características específicas de cada modelo
   List<_ModelFeatureChip> _getModelFeatures(AIModel model, bool isDark) {
     switch (model.id) {
-      case 'gemini-2.5-flash':
+      case 'llama-3.3-70b-versatile':
         return [
           _ModelFeatureChip(
             icon: Icons.flash_on,
@@ -83,7 +85,7 @@ class _ModelSelectorDialogState extends State<ModelSelectorDialog> {
             label: 'Recomendado',
           ),
         ];
-      case 'gemini-2.5-pro':
+      case 'openai/gpt-oss-120b':
         return [
           _ModelFeatureChip(
             icon: Icons.stars,
@@ -96,7 +98,7 @@ class _ModelSelectorDialogState extends State<ModelSelectorDialog> {
             color: isDark ? Colors.cyan[300] : Colors.cyan[700],
           ),
         ];
-      case 'gemini-2.0-flash':
+      case 'openai/gpt-oss-20b':
         return [
           _ModelFeatureChip(
             icon: Icons.verified_outlined,
@@ -104,7 +106,7 @@ class _ModelSelectorDialogState extends State<ModelSelectorDialog> {
             color: isDark ? Colors.green[300] : Colors.green[700],
           ),
         ];
-      case 'gemini-2.5-flash-lite':
+      case 'llama-3.1-8b-instant':
         return [
           _ModelFeatureChip(
             icon: Icons.speed,
@@ -436,7 +438,7 @@ class _ModelSelectorDialogState extends State<ModelSelectorDialog> {
             Expanded(
               child: Padding(
                 padding: const EdgeInsets.all(20),
-                child: _buildModelList(AIModel.availableModels),
+                child: _buildModelList(widget.models),
               ),
             ),
 
