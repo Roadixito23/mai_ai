@@ -8,6 +8,8 @@ import 'datos/sync_service.dart';
 import 'providers/theme_provider.dart';
 import 'screens/chat_screen.dart';
 import 'screens/login_screen.dart';
+import 'sistema/lanzador.dart';
+import 'sistema/presencia_escritorio.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -36,6 +38,11 @@ Future<void> main() async {
   SyncService.shared.remoteChanges.listen((tables) {
     if (tables.contains('timers')) TimerService.shared.load();
   });
+
+  // Presencia en el sistema: bandeja y atajo global en escritorio; tile de
+  // ajustes rápidos y Compartir en Android.
+  await PresenciaEscritorio.shared.init();
+  await Lanzador.shared.initAndroid();
 
   runApp(MyApp(themeProvider: themeProvider));
 }

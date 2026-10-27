@@ -14,11 +14,18 @@ Sin `env.json` la app funciona en modo local: pide una API key de Groq (gratis e
 Requisitos por plataforma:
 - **Windows:** activar el Modo desarrollador (`start ms-settings:developers`), Flutter lo necesita para enlazar plugins. Además `flutter_tts` necesita `nuget.exe` en el PATH (`winget install Microsoft.NuGet`).
 - **Android:** aceptar licencias con `flutter doctor --android-licenses`. La primera vez que tocas el micrófono, la app pide el permiso de grabar audio.
-- **Linux:** `sudo apt install libsecret-1-dev libjsoncpp-dev` para el almacén seguro de la sesión, y `sudo apt install pulseaudio-utils ffmpeg` para la entrada de voz.
+- **Linux:** `sudo apt install libsecret-1-dev libjsoncpp-dev` para el almacén seguro de la sesión, `sudo apt install pulseaudio-utils ffmpeg` para la entrada de voz, y `sudo apt install keybinder-3.0 libayatana-appindicator3-dev` para el atajo global y la bandeja (en GNOME la bandeja necesita la extensión AppIndicator).
+
+## Presencia en el sistema
+
+- **Windows / Linux:** `Ctrl+Alt+Espacio` trae a Mai al frente escuchando (y la misma combinación envía lo que dijiste). Cerrar la ventana la deja en la bandeja con timers y sincronización activos; para cerrarla del todo: bandeja > Salir.
+- **Android:** el tile "Hablar con Mai" de ajustes rápidos la abre escuchando (agrégalo editando los tiles de la cortina), y *Compartir > Mai* desde otra app pone el texto en el chat.
 
 ## Estructura
 
-- `lib/cerebro/` lógica: servicio de IA, controlador del chat, persistencia, TTS, tareas.
+- `lib/cerebro/` lógica: servicio de IA, herramientas, memoria, controlador del chat, voz, tareas.
+- `lib/datos/` SQLite, sesión y sincronización con Supabase.
+- `lib/sistema/` bandeja, atajo global y lanzador (tile y Compartir de Android).
 - `lib/modelos/` modelos de datos.
 - `lib/screens/`, `lib/widgets/`, `lib/providers/` interfaz.
 - `test/` tests de servicios y controlador (`flutter test`).

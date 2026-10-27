@@ -21,6 +21,7 @@ import '../widgets/theme_selector_dialog.dart';
 import '../widgets/typing_indicator.dart';
 import 'mai_pet_screen.dart';
 import 'memorias_screen.dart';
+import '../sistema/lanzador.dart';
 import 'tasks_screen.dart';
 
 class ChatScreen extends StatefulWidget {
@@ -50,11 +51,28 @@ class _ChatScreenState extends State<ChatScreen> {
     _chat.init().then((_) {
       _scrollToBottom();
       _askForApiKeyIfMissing();
+      // Con el historial cargado ya se pueden atender el atajo, la bandeja,
+      // el tile o un texto compartido (incluidos los que llegaron antes).
+      Lanzador.shared.escuchar(_onPeticion);
     });
+  }
+
+  void _onPeticion(PeticionMai peticion) {
+    if (!mounted) return;
+    switch (peticion) {
+      case Escuchar():
+        // Si ya escuchaba, la misma orden envía lo grabado.
+        if (_isRecording || !_chat.isLoading) _toggleRecording();
+      case Compartido(:final texto):
+        // Queda en el cuadro para que el usuario diga qué hacer con él.
+        _textController.text = texto;
+        _textController.selection = TextSelection.collapsed(offset: texto.length);
+    }
   }
 
   @override
   void dispose() {
+    Lanzador.shared.dejarDeEscuchar(_onPeticion);
     _syncSub?.cancel();
     _chat.dispose();
     _textController.dispose();
