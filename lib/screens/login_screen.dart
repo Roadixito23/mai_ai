@@ -12,7 +12,7 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  final _email = TextEditingController();
+  final _user = TextEditingController();
   final _password = TextEditingController();
   bool _obscure = true;
   bool _loading = false;
@@ -20,23 +20,23 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   void dispose() {
-    _email.dispose();
+    _user.dispose();
     _password.dispose();
     super.dispose();
   }
 
   Future<void> _submit() async {
-    if (_loading || _email.text.trim().isEmpty || _password.text.isEmpty) return;
+    if (_loading || _user.text.trim().isEmpty || _password.text.isEmpty) return;
     setState(() {
       _loading = true;
       _error = null;
     });
     try {
-      await AuthService.shared.signIn(_email.text, _password.text);
+      await AuthService.shared.signIn(_user.text, _password.text);
       // AuthGate cambia de pantalla al detectar la sesión.
     } on AuthException catch (e) {
       setState(() => _error = e.statusCode == '400'
-          ? 'Correo o contraseña incorrectos.'
+          ? 'Usuario o contraseña incorrectos.'
           : 'No se pudo iniciar sesión: ${e.message}');
     } catch (_) {
       setState(() => _error = 'No pude conectarme. Revisa tu internet.');
@@ -68,13 +68,13 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   const SizedBox(height: 32),
                   TextField(
-                    controller: _email,
-                    keyboardType: TextInputType.emailAddress,
-                    autofillHints: const [AutofillHints.email],
+                    controller: _user,
+                    keyboardType: TextInputType.text,
+                    autofillHints: const [AutofillHints.username],
                     autocorrect: false,
                     textInputAction: TextInputAction.next,
                     decoration: const InputDecoration(
-                      labelText: 'Correo',
+                      labelText: 'Usuario',
                       border: OutlineInputBorder(),
                     ),
                   ),

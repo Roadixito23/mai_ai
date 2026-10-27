@@ -39,9 +39,47 @@ class AuthService extends ChangeNotifier {
 
   String? get email => _initialized ? _client.auth.currentUser?.email : null;
 
+  /// Supabase Auth identifica por correo: el usuario se guarda como
+  /// `<usuario>@mai.local` (ver supabase/0004_credentials.sql).
+  static const String _domain = 'mai.local';
+
+  static String emailFor(String username) {
+    final u = username.trim().toLowerCase();
+    return u.contains('@') ? u : '$u@$_domain';
+  }
+
+  /// Nombre de usuario de la sesión (con su mayúscula original si se guardó).
+  String? get username {
+    if (!_initialized) return null;
+    final user = _client.auth.currentUser;
+    if (user == null) return null;
+    final meta = user.userMetadata?['username'];
+    if (meta is String && meta.isNotEmpty) return meta;
+    final email = user.email;
+    if (email == null) return null;
+    return email.endsWith('@$_domain') ? email.substring(0, email.length - _domain.length - 1) : email;
+  }
+
   /// Lanza [AuthException] si las credenciales no son válidas.
-  Future<void> signIn(String email, String password) async {
-    await _client.auth.signInWithPassword(email: email.trim(), password: password);
+  Future<void> signIn(String username, String password) async {
+    await _client.auth.signInWithPassword(email: emailFor(username), password: password);
+  }
+
+  /// Cambia usuario y contraseña. Exige la contraseña actual. Lanza
+  /// [PostgrestException] con el motivo si el servidor lo rechaza.
+  Future<void> changeCredentials({
+    required String currentPassword,
+    required String newUsername,
+    required String newPassword,
+  }) async {
+    await _client.rpc('change_credentials', params: {
+      'current_password': currentPassword,
+      'new_username': newUsername,
+      'new_password': newPassword,
+    });
+    // El token anterior lleva el correo viejo: se renueva con los datos nuevos.
+    await _client.auth.refreshSession();
+    notifyListeners();
   }
 
   /// Cierra la sesión solo en este dispositivo.

@@ -20,6 +20,7 @@ import '../widgets/text_composer.dart';
 import '../widgets/theme_selector_dialog.dart';
 import '../widgets/typing_indicator.dart';
 import 'mai_pet_screen.dart';
+import 'cuenta_screen.dart';
 import 'memorias_screen.dart';
 import '../sistema/lanzador.dart';
 import 'tasks_screen.dart';
@@ -364,9 +365,16 @@ class _ChatScreenState extends State<ChatScreen> {
                 ),
                 if (AuthService.shared.isSignedIn)
                   ListTile(
+                    leading: const Icon(Icons.manage_accounts_outlined),
+                    title: const Text('Usuario y contraseña'),
+                    subtitle: Text(AuthService.shared.username ?? ''),
+                    onTap: () => _abrir(const CuentaScreen()),
+                  ),
+                if (AuthService.shared.isSignedIn)
+                  ListTile(
                     leading: const Icon(Icons.logout),
                     title: const Text('Cerrar sesión'),
-                    subtitle: Text(AuthService.shared.email ?? 'En este dispositivo'),
+                    subtitle: const Text('En este dispositivo'),
                     onTap: () {
                       Navigator.pop(context);
                       _confirmarCerrarSesion();
