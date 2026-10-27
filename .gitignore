@@ -52,3 +52,6 @@ app.*.map.json
 !.env.example
 # Configuración local de Supabase (URL + publishable key)
 env.json
+
+# Caché local de la CLI de Supabase
+supabase/.temp/

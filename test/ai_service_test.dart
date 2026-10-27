@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
+import 'package:mai_ai/cerebro/ai_exceptions.dart';
 import 'package:mai_ai/cerebro/ai_service.dart';
 import 'package:mai_ai/cerebro/api_key_store.dart';
 import 'package:mai_ai/cerebro/herramientas.dart';
@@ -159,6 +160,30 @@ void main() {
       expect(requests, hasLength(2));
       expect(requests.first.containsKey('tools'), isTrue);
       expect(requests.last.containsKey('tools'), isFalse);
+    });
+
+    test('por el proxy usa el endpoint dado y un 401 es sesión expirada', () async {
+      final seen = <http.BaseRequest>[];
+      final client = MockClient.streaming((request, body) async {
+        seen.add(request);
+        return http.StreamedResponse(Stream.value(utf8.encode('{}')), 401);
+      });
+      final ai = AIService(
+        clientFactory: () => client,
+        endpoint: () async => const AiEndpoint(
+          'https://x.supabase.co/functions/v1/groq',
+          {'Authorization': 'Bearer jwt'},
+          viaProxy: true,
+        ),
+      );
+
+      await expectLater(
+        ai.sendMessageStream([user('hey')]).join(),
+        throwsA(isA<AIException>().having((e) => e.kind, 'kind', AIErrorKind.sessionExpired)),
+      );
+      expect(seen.single.url.toString(),
+          'https://x.supabase.co/functions/v1/groq/chat/completions');
+      expect(seen.single.headers['Authorization'], 'Bearer jwt');
     });
 
     test('sin tool calls hace una sola petición', () async {

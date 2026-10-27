@@ -1,4 +1,5 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'auth_service.dart';
 
 /// Lo que la sincronización necesita del servidor. Permite probarla sin red.
 abstract interface class RemoteStore {
@@ -15,36 +16,16 @@ abstract interface class RemoteStore {
   });
 }
 
-/// Supabase con una cuenta propietaria fija: la app es de un solo usuario, así
-/// que no hay pantalla de login; entra sola con las credenciales de `env.json`
-/// (`--dart-define-from-file=env.json`). Las reglas RLS siguen activas.
+/// Supabase con la sesión del dueño ([AuthService]). Sin sesión no sincroniza:
+/// los cambios quedan pendientes hasta iniciar sesión. Las reglas RLS siguen activas.
 class SupabaseRemote implements RemoteStore {
-  static const String url = String.fromEnvironment('SUPABASE_URL');
-  static const String publishableKey = String.fromEnvironment('SUPABASE_PUBLISHABLE_KEY');
-  static const String ownerEmail = String.fromEnvironment('OWNER_EMAIL');
-  static const String ownerPassword = String.fromEnvironment('OWNER_PASSWORD');
-
-  static bool get configured =>
-      url.isNotEmpty &&
-      publishableKey.isNotEmpty &&
-      ownerEmail.isNotEmpty &&
-      ownerPassword.isNotEmpty;
-
-  bool _initialized = false;
-
   SupabaseClient get _client => Supabase.instance.client;
 
   @override
   Future<bool> prepare() async {
-    if (!configured) return false;
-    if (!_initialized) {
-      await Supabase.initialize(url: url, publishableKey: publishableKey);
-      _initialized = true;
-    }
-    if (_client.auth.currentSession == null) {
-      await _client.auth.signInWithPassword(email: ownerEmail, password: ownerPassword);
-    }
-    return true;
+    if (!AuthService.configured) return false;
+    await AuthService.shared.init();
+    return AuthService.shared.isSignedIn;
   }
 
   @override

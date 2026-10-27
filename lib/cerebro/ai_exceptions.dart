@@ -1,4 +1,4 @@
-enum AIErrorKind { missingApiKey, invalidApiKey, timeout, network, api, unknown }
+enum AIErrorKind { missingApiKey, invalidApiKey, sessionExpired, timeout, network, api, unknown }
 
 /// Error al hablar con el modelo. Se lanza en lugar de emitirse como texto
 /// para que nunca termine mezclado con las respuestas reales de Mai.
@@ -17,6 +17,8 @@ class AIException implements Exception {
         return 'Todavía no tengo tu API key de Groq. Agrégala desde el menú para poder responderte.';
       case AIErrorKind.invalidApiKey:
         return 'Tu API key de Groq no es válida. Revísala desde el menú.';
+      case AIErrorKind.sessionExpired:
+        return 'Tu sesión no es válida en este dispositivo. Vuelve a iniciar sesión.';
       case AIErrorKind.timeout:
         return 'La conexión está tardando demasiado. Intenta de nuevo en un momento.';
       case AIErrorKind.network:

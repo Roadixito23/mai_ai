@@ -7,6 +7,7 @@ import '../cerebro/api_key_store.dart';
 import '../cerebro/chat_controller.dart';
 import '../cerebro/config.dart';
 import '../cerebro/tts_service.dart';
+import '../datos/auth_service.dart';
 import '../datos/sync_service.dart';
 import '../modelos/ai_model.dart';
 import '../providers/theme_provider.dart';
@@ -59,8 +60,33 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   Future<void> _askForApiKeyIfMissing() async {
-    if (!mounted || await _keyStore.hasKey()) return;
+    // Con Supabase no hace falta key local: la usa el proxy.
+    if (!mounted || AuthService.configured || await _keyStore.hasKey()) return;
     await _mostrarDialogoApiKey();
+  }
+
+  Future<void> _confirmarCerrarSesion() async {
+    final confirmar = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Cerrar sesión'),
+        content: const Text(
+          'Mai dejará de sincronizar y de responder en este dispositivo hasta que vuelvas '
+          'a iniciar sesión. Lo guardado aquí no se borra.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancelar'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Cerrar sesión'),
+          ),
+        ],
+      ),
+    );
+    if (confirmar == true) await AuthService.shared.signOut();
   }
 
   Future<void> _mostrarDialogoApiKey() async {
@@ -260,14 +286,16 @@ class _ChatScreenState extends State<ChatScreen> {
                     _mostrarSelectorModelo();
                   },
                 ),
-                ListTile(
-                  leading: const Icon(Icons.vpn_key_outlined),
-                  title: const Text('API key de Groq'),
-                  onTap: () {
-                    Navigator.pop(context);
-                    _mostrarDialogoApiKey();
-                  },
-                ),
+                // Con Supabase la key de Groq vive en el servidor.
+                if (!AuthService.configured)
+                  ListTile(
+                    leading: const Icon(Icons.vpn_key_outlined),
+                    title: const Text('API key de Groq'),
+                    onTap: () {
+                      Navigator.pop(context);
+                      _mostrarDialogoApiKey();
+                    },
+                  ),
                 const _SyncTile(),
                 ListTile(
                   leading: const Icon(Icons.task_alt),
@@ -279,6 +307,16 @@ class _ChatScreenState extends State<ChatScreen> {
                   title: const Text('mai~'),
                   onTap: () => _abrir(const MaiPetScreen()),
                 ),
+                if (AuthService.shared.isSignedIn)
+                  ListTile(
+                    leading: const Icon(Icons.logout),
+                    title: const Text('Cerrar sesión'),
+                    subtitle: Text(AuthService.shared.email ?? 'En este dispositivo'),
+                    onTap: () {
+                      Navigator.pop(context);
+                      _confirmarCerrarSesion();
+                    },
+                  ),
                 if (messages.isNotEmpty) ...[
                   const Divider(),
                   ListTile(
@@ -354,7 +392,9 @@ class _SyncTile extends StatelessWidget {
   String _subtitle(SyncService sync) {
     switch (sync.status) {
       case SyncStatus.disabled:
-        return 'Sin configurar (falta env.json)';
+        return AuthService.configured
+            ? 'Inicia sesión para sincronizar'
+            : 'Sin configurar (falta env.json)';
       case SyncStatus.syncing:
         return 'Sincronizando…';
       case SyncStatus.failed:

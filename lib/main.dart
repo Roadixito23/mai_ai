@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'cerebro/timer_service.dart';
 import 'datos/app_database.dart';
+import 'datos/auth_service.dart';
 import 'datos/legacy_migration.dart';
 import 'datos/sync_service.dart';
 import 'providers/theme_provider.dart';
 import 'screens/chat_screen.dart';
+import 'screens/login_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -20,8 +22,17 @@ Future<void> main() async {
   // Retoma los temporizadores guardados y acredita los que terminaron con la app cerrada.
   await TimerService.shared.load();
 
+  // Recupera la sesión guardada (no necesita red). Sin env.json, modo local.
+  await AuthService.shared.init();
+
   // Sincroniza con Supabase en segundo plano; sin red simplemente queda pendiente.
   SyncService.shared.start();
+  var wasSignedIn = AuthService.shared.isSignedIn;
+  AuthService.shared.addListener(() {
+    final signedIn = AuthService.shared.isSignedIn;
+    if (signedIn && !wasSignedIn) SyncService.shared.sync(); // recién inició sesión
+    wasSignedIn = signedIn;
+  });
   SyncService.shared.remoteChanges.listen((tables) {
     if (tables.contains('timers')) TimerService.shared.load();
   });
@@ -46,10 +57,26 @@ class MyApp extends StatelessWidget {
             theme: ThemeProvider.lightTheme,
             darkTheme: ThemeProvider.darkTheme,
             themeMode: themeProvider.themeMode,
-            home: const ChatScreen(),
+            home: const AuthGate(),
           );
         },
       ),
+    );
+  }
+}
+
+/// Con Supabase configurado, pide iniciar sesión hasta que haya una; sin
+/// configurar, entra directo en modo local.
+class AuthGate extends StatelessWidget {
+  const AuthGate({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    if (!AuthService.configured) return const ChatScreen();
+    return ListenableBuilder(
+      listenable: AuthService.shared,
+      builder: (context, _) =>
+          AuthService.shared.isSignedIn ? const ChatScreen() : const LoginScreen(),
     );
   }
 }

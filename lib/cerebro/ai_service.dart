@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import '../datos/auth_service.dart';
 import '../modelos/ai_model.dart';
 import '../modelos/chat_message.dart';
 import 'ai_exceptions.dart';
@@ -20,17 +21,49 @@ abstract interface class ChatBackend {
   });
 }
 
+/// Dónde se llama a la API compatible con OpenAI y con qué cabeceras.
+class AiEndpoint {
+  const AiEndpoint(this.baseUrl, this.headers, {this.viaProxy = false});
+
+  final String baseUrl;
+  final Map<String, String> headers;
+
+  /// true: Edge Function de Supabase con la sesión del dueño (la key de Groq
+  /// vive en el servidor). false: Groq directo con la key de este dispositivo.
+  final bool viaProxy;
+}
+
 class AIService implements ChatBackend {
   AIService({
     ApiKeyStore? keyStore,
     http.Client Function()? clientFactory,
     Herramientas? herramientas,
+    Future<AiEndpoint> Function()? endpoint,
   })  : _keyStore = keyStore ?? ApiKeyStore(),
         _clientFactory = clientFactory ?? http.Client.new,
-        _herramientas = herramientas;
+        _herramientas = herramientas,
+        _endpointOverride = endpoint;
 
   final ApiKeyStore _keyStore;
   final http.Client Function() _clientFactory;
+  final Future<AiEndpoint> Function()? _endpointOverride;
+
+  /// Con sesión iniciada se usa el proxy; si no, la key local.
+  Future<AiEndpoint> _endpoint() async {
+    if (_endpointOverride != null) return _endpointOverride();
+    final token = await AuthService.shared.accessToken();
+    if (token != null) {
+      return AiEndpoint(
+        '${AuthService.url}/functions/v1/groq',
+        {'Authorization': 'Bearer $token', 'apikey': AuthService.publishableKey},
+        viaProxy: true,
+      );
+    }
+    if (AuthService.configured) throw const AIException(AIErrorKind.sessionExpired);
+    final apiKey = await _keyStore.read();
+    if (apiKey.isEmpty) throw const AIException(AIErrorKind.missingApiKey);
+    return AiEndpoint(Config.apiBaseUrl, {'Authorization': 'Bearer $apiKey'});
+  }
 
   /// null: el modelo solo conversa, sin ejecutar acciones.
   final Herramientas? _herramientas;
@@ -66,12 +99,10 @@ class AIService implements ChatBackend {
     List<ChatMessage> messages, {
     void Function(String resumen)? onAction,
   }) async* {
-    final apiKey = await _keyStore.read();
-    if (apiKey.isEmpty) throw const AIException(AIErrorKind.missingApiKey);
-
     final history = buildHistory(messages);
     if (history.isEmpty) return;
 
+    final endpoint = await _endpoint();
     final client = _clientFactory();
     try {
       final model = await Config.getSavedModel();
@@ -92,7 +123,7 @@ class AIService implements ChatBackend {
         final text = StringBuffer();
 
         try {
-          await for (final chunk in _complete(client, apiKey, {
+          await for (final chunk in _complete(client, endpoint, {
             'model': model,
             'stream': true,
             'temperature': 0.9,
@@ -152,15 +183,12 @@ class AIService implements ChatBackend {
   /// llamadas a herramientas, que llegan en fragmentos indexados.
   Stream<String> _complete(
     http.Client client,
-    String apiKey,
+    AiEndpoint endpoint,
     Map<String, dynamic> body,
     Map<int, _ToolCall> calls,
   ) async* {
-    final request = http.Request('POST', Uri.parse('${Config.apiBaseUrl}/chat/completions'))
-      ..headers.addAll({
-        'Authorization': 'Bearer $apiKey',
-        'Content-Type': 'application/json',
-      })
+    final request = http.Request('POST', Uri.parse('${endpoint.baseUrl}/chat/completions'))
+      ..headers.addAll({...endpoint.headers, 'Content-Type': 'application/json'})
       ..body = jsonEncode(body);
 
     final response = await client
@@ -169,7 +197,7 @@ class AIService implements ChatBackend {
 
     if (response.statusCode != 200) {
       final text = await response.stream.bytesToString();
-      throw _errorFor(response.statusCode, text);
+      throw _errorFor(response.statusCode, text, viaProxy: endpoint.viaProxy);
     }
 
     final lines = response.stream
@@ -204,17 +232,16 @@ class AIService implements ChatBackend {
 
   /// Modelos de chat que la API key actual puede usar.
   Future<List<AIModel>> listModels() async {
-    final apiKey = await _keyStore.read();
-    if (apiKey.isEmpty) throw const AIException(AIErrorKind.missingApiKey);
-
+    final endpoint = await _endpoint();
     final client = _clientFactory();
     try {
-      final response = await client.get(
-        Uri.parse('${Config.apiBaseUrl}/models'),
-        headers: {'Authorization': 'Bearer $apiKey'},
-      ).timeout(Duration(seconds: Config.httpTimeoutSeconds));
+      final response = await client
+          .get(Uri.parse('${endpoint.baseUrl}/models'), headers: endpoint.headers)
+          .timeout(Duration(seconds: Config.httpTimeoutSeconds));
 
-      if (response.statusCode != 200) throw _errorFor(response.statusCode, response.body);
+      if (response.statusCode != 200) {
+        throw _errorFor(response.statusCode, response.body, viaProxy: endpoint.viaProxy);
+      }
 
       final data = (jsonDecode(response.body) as Map<String, dynamic>)['data'] as List;
       final ids = [
@@ -240,8 +267,11 @@ class AIService implements ChatBackend {
   static bool _isToolsUnsupported(AIException e) =>
       e.kind == AIErrorKind.api && (e.detail ?? '').contains('tool calling');
 
-  static AIException _errorFor(int status, String body) {
-    if (status == 401) return const AIException(AIErrorKind.invalidApiKey);
+  static AIException _errorFor(int status, String body, {bool viaProxy = false}) {
+    if (status == 401) {
+      // Por el proxy, 401 es la sesión de Supabase; la key de Groq es del servidor.
+      return AIException(viaProxy ? AIErrorKind.sessionExpired : AIErrorKind.invalidApiKey);
+    }
     String? message;
     try {
       message = (jsonDecode(body)['error']?['message']) as String?;
