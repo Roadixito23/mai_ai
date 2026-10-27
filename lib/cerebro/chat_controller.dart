@@ -3,6 +3,7 @@ import '../modelos/chat_message.dart';
 import 'ai_exceptions.dart';
 import 'ai_service.dart';
 import 'config.dart';
+import 'herramientas.dart';
 import 'persistencia_service.dart';
 import 'tts_service.dart';
 
@@ -13,7 +14,7 @@ class ChatController extends ChangeNotifier {
     ChatBackend? backend,
     PersistenciaService? storage,
     TTSService? tts,
-  })  : _backend = backend ?? AIService(),
+  })  : _backend = backend ?? AIService(herramientas: Herramientas()),
         _storage = storage ?? PersistenciaService(),
         _tts = tts;
 
@@ -78,12 +79,18 @@ class ChatController extends ChangeNotifier {
     notifyListeners();
 
     final buffer = StringBuffer();
+    final acciones = <String>[];
     try {
       final history = _messages
           .sublist(0, _messages.length - 1)
           .where((m) => !m.isError)
           .toList();
-      await for (final chunk in _backend.sendMessageStream(history)) {
+      final stream = _backend.sendMessageStream(history, onAction: (resumen) {
+        acciones.add(resumen);
+        reply = reply.copyWith(metadata: {'acciones': List.of(acciones)});
+        _replaceLast(reply);
+      });
+      await for (final chunk in stream) {
         buffer.write(chunk);
         reply = reply.copyWith(text: buffer.toString());
         _replaceLast(reply);

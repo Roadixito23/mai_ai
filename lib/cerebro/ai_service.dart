@@ -7,20 +7,33 @@ import '../modelos/chat_message.dart';
 import 'ai_exceptions.dart';
 import 'api_key_store.dart';
 import 'config.dart';
+import 'herramientas.dart';
 import 'mai_personalidad.dart';
 
 /// Lo mínimo que el chat necesita de un modelo. Permite probar sin red.
 abstract interface class ChatBackend {
-  Stream<String> sendMessageStream(List<ChatMessage> messages);
+  /// Emite el texto de la respuesta. [onAction] recibe un resumen de cada
+  /// acción que el modelo ejecutó (crear tarea, iniciar timer...).
+  Stream<String> sendMessageStream(
+    List<ChatMessage> messages, {
+    void Function(String resumen)? onAction,
+  });
 }
 
 class AIService implements ChatBackend {
-  AIService({ApiKeyStore? keyStore, http.Client Function()? clientFactory})
-      : _keyStore = keyStore ?? ApiKeyStore(),
-        _clientFactory = clientFactory ?? http.Client.new;
+  AIService({
+    ApiKeyStore? keyStore,
+    http.Client Function()? clientFactory,
+    Herramientas? herramientas,
+  })  : _keyStore = keyStore ?? ApiKeyStore(),
+        _clientFactory = clientFactory ?? http.Client.new,
+        _herramientas = herramientas;
 
   final ApiKeyStore _keyStore;
   final http.Client Function() _clientFactory;
+
+  /// null: el modelo solo conversa, sin ejecutar acciones.
+  final Herramientas? _herramientas;
 
   /// Convierte el historial del chat al formato de la API (compatible con OpenAI).
   ///
@@ -44,8 +57,15 @@ class AIService implements ChatBackend {
     ];
   }
 
+  /// Vueltas máximas de herramientas por mensaje; la última se pide sin tools
+  /// para que el modelo siempre termine respondiendo con texto.
+  static const int _maxToolRounds = 4;
+
   @override
-  Stream<String> sendMessageStream(List<ChatMessage> messages) async* {
+  Stream<String> sendMessageStream(
+    List<ChatMessage> messages, {
+    void Function(String resumen)? onAction,
+  }) async* {
     final apiKey = await _keyStore.read();
     if (apiKey.isEmpty) throw const AIException(AIErrorKind.missingApiKey);
 
@@ -54,44 +74,65 @@ class AIService implements ChatBackend {
 
     final client = _clientFactory();
     try {
-      final request = http.Request('POST', Uri.parse('${Config.apiBaseUrl}/chat/completions'))
-        ..headers.addAll({
-          'Authorization': 'Bearer $apiKey',
-          'Content-Type': 'application/json',
-        })
-        ..body = jsonEncode({
-          'model': await Config.getSavedModel(),
-          'stream': true,
-          'temperature': 0.9,
-          'top_p': 0.95,
-          'messages': [
-            {'role': 'system', 'content': MaiPersonalidad.systemPrompt},
-            ...history,
-          ],
+      final model = await Config.getSavedModel();
+      final now = DateTime.now();
+      final conversation = <Map<String, dynamic>>[
+        {
+          'role': 'system',
+          'content': MaiPersonalidad.build(now, herramientas: _herramientas != null),
+        },
+        ...history,
+      ];
+
+      var toolsSupported = true;
+      for (var round = 0; round < _maxToolRounds; round++) {
+        final withTools =
+            _herramientas != null && toolsSupported && round < _maxToolRounds - 1;
+        final calls = <int, _ToolCall>{};
+        final text = StringBuffer();
+
+        try {
+          await for (final chunk in _complete(client, apiKey, {
+            'model': model,
+            'stream': true,
+            'temperature': 0.9,
+            'top_p': 0.95,
+            'messages': conversation,
+            if (withTools) 'tools': _herramientas.esquemas,
+          }, calls)) {
+            text.write(chunk);
+            yield chunk;
+          }
+        } on AIException catch (e) {
+          // Algunos modelos no aceptan herramientas: se responde solo con texto.
+          if (!withTools || text.isNotEmpty || !_isToolsUnsupported(e)) rethrow;
+          debugPrint('El modelo $model no admite herramientas; se sigue sin ellas.');
+          toolsSupported = false;
+          conversation[0] = {
+            'role': 'system',
+            'content': MaiPersonalidad.build(now, herramientas: false),
+          };
+          round--;
+          continue;
+        }
+
+        if (calls.isEmpty) return;
+
+        final ordered = (calls.keys.toList()..sort()).map((i) => calls[i]!).toList();
+        conversation.add({
+          'role': 'assistant',
+          'content': text.isEmpty ? null : text.toString(),
+          'tool_calls': [for (final c in ordered) c.toJson()],
         });
-
-      final response = await client
-          .send(request)
-          .timeout(Duration(seconds: Config.httpTimeoutSeconds));
-
-      if (response.statusCode != 200) {
-        final body = await response.stream.bytesToString();
-        throw _errorFor(response.statusCode, body);
-      }
-
-      final lines = response.stream
-          .transform(utf8.decoder)
-          .transform(const LineSplitter())
-          .timeout(Duration(seconds: Config.httpTimeoutSeconds));
-      await for (final line in lines) {
-        if (!line.startsWith('data:')) continue;
-        final data = line.substring(5).trim();
-        if (data == '[DONE]') break;
-        final choices = (jsonDecode(data) as Map<String, dynamic>)['choices'] as List?;
-        final text = choices == null || choices.isEmpty
-            ? null
-            : (choices.first['delta'] as Map<String, dynamic>?)?['content'] as String?;
-        if (text != null && text.isNotEmpty) yield text;
+        for (final call in ordered) {
+          final result = await _herramientas!.ejecutar(call.name, call.arguments.toString());
+          if (result.resumen != null) onAction?.call(result.resumen!);
+          conversation.add({
+            'role': 'tool',
+            'tool_call_id': call.id,
+            'content': jsonEncode(result.json),
+          });
+        }
       }
     } on TimeoutException {
       throw const AIException(AIErrorKind.timeout);
@@ -104,6 +145,57 @@ class AIService implements ChatBackend {
       throw AIException(AIErrorKind.unknown, e.toString());
     } finally {
       client.close();
+    }
+  }
+
+  /// Una petición en streaming: emite el texto y acumula en [calls] las
+  /// llamadas a herramientas, que llegan en fragmentos indexados.
+  Stream<String> _complete(
+    http.Client client,
+    String apiKey,
+    Map<String, dynamic> body,
+    Map<int, _ToolCall> calls,
+  ) async* {
+    final request = http.Request('POST', Uri.parse('${Config.apiBaseUrl}/chat/completions'))
+      ..headers.addAll({
+        'Authorization': 'Bearer $apiKey',
+        'Content-Type': 'application/json',
+      })
+      ..body = jsonEncode(body);
+
+    final response = await client
+        .send(request)
+        .timeout(Duration(seconds: Config.httpTimeoutSeconds));
+
+    if (response.statusCode != 200) {
+      final text = await response.stream.bytesToString();
+      throw _errorFor(response.statusCode, text);
+    }
+
+    final lines = response.stream
+        .transform(utf8.decoder)
+        .transform(const LineSplitter())
+        .timeout(Duration(seconds: Config.httpTimeoutSeconds));
+    await for (final line in lines) {
+      if (!line.startsWith('data:')) continue;
+      final data = line.substring(5).trim();
+      if (data == '[DONE]') break;
+      final choices = (jsonDecode(data) as Map<String, dynamic>)['choices'] as List?;
+      if (choices == null || choices.isEmpty) continue;
+      final delta = choices.first['delta'] as Map<String, dynamic>?;
+      if (delta == null) continue;
+
+      for (final raw in (delta['tool_calls'] as List?) ?? const []) {
+        final index = raw['index'] as int? ?? 0;
+        final call = calls.putIfAbsent(index, _ToolCall.new);
+        call.id = raw['id'] as String? ?? call.id;
+        final fn = raw['function'] as Map<String, dynamic>?;
+        call.name = fn?['name'] as String? ?? call.name;
+        call.arguments.write(fn?['arguments'] as String? ?? '');
+      }
+
+      final text = delta['content'] as String?;
+      if (text != null && text.isNotEmpty) yield text;
     }
   }
 
@@ -145,6 +237,9 @@ class AIService implements ChatBackend {
     }
   }
 
+  static bool _isToolsUnsupported(AIException e) =>
+      e.kind == AIErrorKind.api && (e.detail ?? '').contains('tool calling');
+
   static AIException _errorFor(int status, String body) {
     if (status == 401) return const AIException(AIErrorKind.invalidApiKey);
     String? message;
@@ -154,4 +249,17 @@ class AIService implements ChatBackend {
     debugPrint('Error de la API de Groq ($status): ${message ?? body}');
     return AIException(AIErrorKind.api, message);
   }
+}
+
+/// Llamada a herramienta que se va armando con los fragmentos del streaming.
+class _ToolCall {
+  String id = '';
+  String name = '';
+  final StringBuffer arguments = StringBuffer();
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'type': 'function',
+        'function': {'name': name, 'arguments': arguments.toString()},
+      };
 }

@@ -14,6 +14,9 @@ class MessageBubble extends StatelessWidget {
     this.isAnimating = false,
   });
 
+  List<String> get _acciones =>
+      (message.metadata?['acciones'] as List?)?.cast<String>() ?? const [];
+
   void _copiarMensaje(BuildContext context, String text) {
     Clipboard.setData(ClipboardData(text: text));
     ScaffoldMessenger.of(context).showSnackBar(
@@ -127,6 +130,23 @@ class MessageBubble extends StatelessWidget {
                           ),
                         ),
                 ),
+                // Acciones que Mai ejecutó para esta respuesta
+                if (_acciones.isNotEmpty) ...[
+                  const SizedBox(height: 6),
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 6,
+                    children: [
+                      for (final accion in _acciones)
+                        Chip(
+                          avatar: Icon(Icons.check_circle, size: 16, color: Colors.green[700]),
+                          label: Text(accion, style: const TextStyle(fontSize: 12)),
+                          visualDensity: VisualDensity.compact,
+                          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        ),
+                    ],
+                  ),
+                ],
                 const SizedBox(height: 4),
 
                 // Botón de copiar

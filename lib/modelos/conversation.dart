@@ -32,7 +32,7 @@ class Conversation {
       messages: [],
       createdAt: now,
       updatedAt: now,
-      modelId: modelId ?? 'llama-3.3-70b-versatile',
+      modelId: modelId ?? 'openai/gpt-oss-120b',
       isPinned: false,
     );
   }

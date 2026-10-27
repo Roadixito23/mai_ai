@@ -7,7 +7,7 @@ class Config {
   static const String gptOss120b = 'openai/gpt-oss-120b';
   static const String gptOss20b = 'openai/gpt-oss-20b';
 
-  static const String defaultModel = llama33Versatile;
+  static const String defaultModel = gptOss120b;
 
   static const String apiBaseUrl = 'https://api.groq.com/openai/v1';
 

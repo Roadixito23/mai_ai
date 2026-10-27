@@ -13,7 +13,10 @@ class FakeBackend implements ChatBackend {
   List<ChatMessage>? received;
 
   @override
-  Stream<String> sendMessageStream(List<ChatMessage> messages) {
+  Stream<String> sendMessageStream(
+    List<ChatMessage> messages, {
+    void Function(String resumen)? onAction,
+  }) {
     received = messages;
     return run(messages);
   }

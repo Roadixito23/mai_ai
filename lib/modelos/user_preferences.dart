@@ -11,7 +11,7 @@ class UserPreferences {
   final bool autoScrollEnabled;
 
   const UserPreferences({
-    this.preferredModelId = 'llama-3.3-70b-versatile',
+    this.preferredModelId = 'openai/gpt-oss-120b',
     this.theme = 'system',
     this.voiceModeEnabled = false,
     this.language = 'es-ES',
@@ -70,7 +70,7 @@ class UserPreferences {
   /// Crear desde JSON
   factory UserPreferences.fromJson(Map<String, dynamic> json) {
     return UserPreferences(
-      preferredModelId: json['preferredModelId'] as String? ?? 'llama-3.3-70b-versatile',
+      preferredModelId: json['preferredModelId'] as String? ?? 'openai/gpt-oss-120b',
       theme: json['theme'] as String? ?? 'system',
       voiceModeEnabled: json['voiceModeEnabled'] as bool? ?? false,
       language: json['language'] as String? ?? 'es-ES',
