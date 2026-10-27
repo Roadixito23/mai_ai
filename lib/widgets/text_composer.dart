@@ -7,11 +7,17 @@ class TextComposer extends StatefulWidget {
   final Function(String) onSubmit;
   final bool isLoading;
 
+  /// Entrada de voz: null oculta el micrófono.
+  final VoidCallback? onMicPressed;
+  final bool isRecording;
+
   const TextComposer({
     super.key,
     required this.controller,
     required this.onSubmit,
     required this.isLoading,
+    this.onMicPressed,
+    this.isRecording = false,
   });
 
   @override
@@ -94,12 +100,14 @@ class _TextComposerState extends State<TextComposer> {
                   onKeyEvent: _handleKeyEvent,
                   child: TextField(
                     controller: widget.controller,
-                    enabled: !widget.isLoading,
+                    enabled: !widget.isLoading && !widget.isRecording,
                     maxLength: Config.maxInputCharacters,
                     maxLines: null,
                     keyboardType: TextInputType.multiline,
                     decoration: InputDecoration(
-                      hintText: 'Escribe un mensaje...',
+                      hintText: widget.isRecording
+                          ? 'Escuchando… toca el botón rojo para enviar'
+                          : 'Escribe un mensaje...',
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(24),
                       ),
@@ -113,9 +121,17 @@ class _TextComposerState extends State<TextComposer> {
                 ),
               ),
               const SizedBox(width: 8),
+              if (widget.onMicPressed != null)
+                IconButton(
+                  icon: Icon(widget.isRecording ? Icons.stop_circle : Icons.mic),
+                  tooltip: widget.isRecording ? 'Enviar audio' : 'Hablarle a Mai',
+                  onPressed: widget.isLoading ? null : widget.onMicPressed,
+                  color: widget.isRecording ? Colors.red : Colors.blue,
+                  iconSize: 28,
+                ),
               IconButton(
                 icon: const Icon(Icons.send),
-                onPressed: widget.isLoading || isAtLimit
+                onPressed: widget.isLoading || widget.isRecording || isAtLimit
                     ? null
                     : () => widget.onSubmit(widget.controller.text),
                 color: Colors.blue,

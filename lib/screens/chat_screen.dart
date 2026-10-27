@@ -7,6 +7,7 @@ import '../cerebro/api_key_store.dart';
 import '../cerebro/chat_controller.dart';
 import '../cerebro/config.dart';
 import '../cerebro/tts_service.dart';
+import '../cerebro/voice_recorder.dart';
 import '../datos/auth_service.dart';
 import '../datos/sync_service.dart';
 import '../modelos/ai_model.dart';
@@ -31,6 +32,8 @@ class ChatScreen extends StatefulWidget {
 class _ChatScreenState extends State<ChatScreen> {
   final ApiKeyStore _keyStore = ApiKeyStore();
   final TTSService _ttsService = TTSService();
+  final VoiceRecorder _recorder = VoiceRecorder();
+  bool _isRecording = false;
   late final ChatController _chat;
   final TextEditingController _textController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
@@ -56,6 +59,7 @@ class _ChatScreenState extends State<ChatScreen> {
     _textController.dispose();
     _scrollController.dispose();
     _ttsService.dispose();
+    _recorder.dispose();
     super.dispose();
   }
 
@@ -114,6 +118,33 @@ class _ChatScreenState extends State<ChatScreen> {
         ),
       );
     }
+  }
+
+  /// Primer toque: graba. Segundo toque: transcribe y envía.
+  Future<void> _toggleRecording() async {
+    if (!_isRecording) {
+      _ttsService.stop(); // que Mai no se escuche a sí misma
+      if (!await _recorder.start()) {
+        _avisar('Mai necesita permiso para usar el micrófono.');
+        return;
+      }
+      setState(() => _isRecording = true);
+      return;
+    }
+
+    setState(() => _isRecording = false);
+    final path = await _recorder.stop();
+    if (path == null) return;
+    _scrollToBottom();
+    final understood = await _chat.sendVoice(path);
+    VoiceRecorder.deleteFile(path);
+    _scrollToBottom();
+    if (!understood) _avisar('No te escuché bien. Intenta de nuevo.');
+  }
+
+  void _avisar(String texto) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(texto)));
   }
 
   void _scrollToBottom() {
@@ -375,6 +406,8 @@ class _ChatScreenState extends State<ChatScreen> {
                       controller: _textController,
                       onSubmit: _handleSubmit,
                       isLoading: _chat.isLoading,
+                      isRecording: _isRecording,
+                      onMicPressed: _toggleRecording,
                     ),
                   ],
                 ),

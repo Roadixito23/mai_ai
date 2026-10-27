@@ -14,11 +14,14 @@ class ChatController extends ChangeNotifier {
     ChatBackend? backend,
     PersistenciaService? storage,
     TTSService? tts,
+    Transcriber? transcriber,
   })  : _backend = backend ?? AIService(herramientas: Herramientas()),
         _storage = storage ?? PersistenciaService(),
-        _tts = tts;
+        _tts = tts,
+        _transcriber = transcriber ?? AIService();
 
   final ChatBackend _backend;
+  final Transcriber _transcriber;
   final PersistenciaService _storage;
   final TTSService? _tts;
 
@@ -26,11 +29,13 @@ class ChatController extends ChangeNotifier {
   bool _isLoading = false;
   bool _isLoadingHistory = true;
   bool _isVoiceMode = false;
+  bool _isTranscribing = false;
   String? _modelName;
   AIException? _lastError;
 
   List<ChatMessage> get messages => List.unmodifiable(_messages);
-  bool get isLoading => _isLoading;
+  bool get isLoading => _isLoading || _isTranscribing;
+  bool get isTranscribing => _isTranscribing;
   bool get isLoadingHistory => _isLoadingHistory;
   bool get isVoiceMode => _isVoiceMode;
   String? get modelName => _modelName;
@@ -63,9 +68,33 @@ class ChatController extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> send(String text) async {
+  /// Transcribe lo que dijo el usuario y lo envía. Si le habló a Mai, ella
+  /// responde en voz alta aunque el modo voz esté apagado. Devuelve false si
+  /// no se entendió nada.
+  Future<bool> sendVoice(String audioPath) async {
+    if (isLoading) return false;
+    _lastError = null;
+    _isTranscribing = true;
+    notifyListeners();
+    String text;
+    try {
+      text = await _transcriber.transcribe(audioPath);
+    } on AIException catch (e) {
+      _lastError = e;
+      _messages.add(ChatMessage.error(errorMessage: e.userMessage));
+      return true;
+    } finally {
+      _isTranscribing = false;
+      notifyListeners();
+    }
+    if (text.isEmpty) return false;
+    await send(text, speakReply: true);
+    return true;
+  }
+
+  Future<void> send(String text, {bool speakReply = false}) async {
     final trimmed = text.trim();
-    if (trimmed.isEmpty || _isLoading) return;
+    if (trimmed.isEmpty || isLoading) return;
 
     _lastError = null;
     _isLoading = true;
@@ -98,7 +127,7 @@ class ChatController extends ChangeNotifier {
       if (buffer.isEmpty) {
         throw const AIException(AIErrorKind.unknown, 'respuesta vacía');
       }
-      if (_isVoiceMode) await _tts?.speak(buffer.toString());
+      if (_isVoiceMode || speakReply) await _tts?.speak(buffer.toString());
     } on AIException catch (e) {
       _lastError = e;
       _replaceLast(ChatMessage.error(errorMessage: e.userMessage));

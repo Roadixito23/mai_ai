@@ -57,10 +57,12 @@ Deno.serve(async (req) => {
   const contentType = req.headers.get("Content-Type");
   if (contentType) headers.set("Content-Type", contentType);
 
+  // El cuerpo de la petición se lee entero (JSON o un audio corto): reenviarlo
+  // como stream exige `duplex` y falla con multipart en algunos runtimes.
   const upstream = await fetch(`${GROQ}/${path}`, {
     method: req.method,
     headers,
-    body: req.method === "GET" ? undefined : req.body,
+    body: req.method === "GET" ? undefined : await req.arrayBuffer(),
   });
 
   // Un 401 de Groq es la key del servidor, no la sesión del usuario.

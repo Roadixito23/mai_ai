@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
@@ -184,6 +185,33 @@ void main() {
       expect(seen.single.url.toString(),
           'https://x.supabase.co/functions/v1/groq/chat/completions');
       expect(seen.single.headers['Authorization'], 'Bearer jwt');
+    });
+
+    test('transcribe envía el audio como multipart a Whisper', () async {
+      final dir = await Directory.systemTemp.createTemp('mai_test');
+      final audio = File('${dir.path}/voz.wav')..writeAsBytesSync([1, 2, 3, 4]);
+      late http.BaseRequest seen;
+      late String body;
+      final client = MockClient.streaming((request, stream) async {
+        seen = request;
+        body = latin1.decode(await stream.toBytes());
+        return http.StreamedResponse(
+          Stream.value(utf8.encode(jsonEncode({'text': ' pon un timer de diez minutos '}))),
+          200,
+        );
+      });
+      final ai = AIService(
+        clientFactory: () => client,
+        endpoint: () async => const AiEndpoint('https://proxy/groq', {'Authorization': 'Bearer jwt'}),
+      );
+
+      expect(await ai.transcribe(audio.path), 'pon un timer de diez minutos');
+      expect(seen.url.toString(), 'https://proxy/groq/audio/transcriptions');
+      expect(seen.headers['Authorization'], 'Bearer jwt');
+      expect(seen.headers['content-type'], startsWith('multipart/form-data'));
+      expect(body, contains(AIService.transcriptionModel));
+      expect(body, contains('filename="voz.wav"'));
+      await dir.delete(recursive: true);
     });
 
     test('sin tool calls hace una sola petición', () async {

@@ -22,6 +22,14 @@ class FakeBackend implements ChatBackend {
   }
 }
 
+class FakeTranscriber implements Transcriber {
+  FakeTranscriber(this.run);
+  final Future<String> Function() run;
+
+  @override
+  Future<String> transcribe(String audioPath) => run();
+}
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
@@ -90,6 +98,47 @@ void main() {
 
     await chat.send('   ');
     expect(chat.messages, isEmpty);
+  });
+
+  group('voz', () {
+    ChatController voiceChat(ChatBackend backend, Future<String> Function() transcribe) =>
+        ChatController(
+          backend: backend,
+          storage: PersistenciaService(db: db),
+          transcriber: FakeTranscriber(transcribe),
+        );
+
+    test('transcribe y envía lo que dijo el usuario', () async {
+      final backend = FakeBackend((_) => Stream.value('listo'));
+      final chat = voiceChat(backend, () async => 'pon un timer');
+      await chat.init();
+
+      expect(await chat.sendVoice('voz.wav'), isTrue);
+      expect(chat.messages.map((m) => m.text), ['pon un timer', 'listo']);
+      expect(chat.isLoading, isFalse);
+    });
+
+    test('si no se entendió nada no envía', () async {
+      final backend = FakeBackend((_) => Stream.value('no debería'));
+      final chat = voiceChat(backend, () async => '');
+      await chat.init();
+
+      expect(await chat.sendVoice('voz.wav'), isFalse);
+      expect(chat.messages, isEmpty);
+      expect(backend.received, isNull);
+    });
+
+    test('un error al transcribir se muestra y no llega al modelo', () async {
+      final backend = FakeBackend((_) => Stream.value('no debería'));
+      final chat = voiceChat(backend, () async => throw const AIException(AIErrorKind.network));
+      await chat.init();
+
+      expect(await chat.sendVoice('voz.wav'), isTrue);
+      expect(chat.messages.single.isError, isTrue);
+      expect(chat.lastError?.kind, AIErrorKind.network);
+      expect(chat.isTranscribing, isFalse);
+      expect(backend.received, isNull);
+    });
   });
 
   test('clear borra memoria y disco', () async {

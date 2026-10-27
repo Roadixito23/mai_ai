@@ -1,6 +1,6 @@
 # Mai
 
-Asistente personal en Flutter para Android, Windows y Linux. Chat con IA (Groq) que puede crear tareas, timers y pomodoros, voz (TTS) y una mascota animada.
+Asistente personal en Flutter para Android, Windows y Linux. Chat con IA (Groq) que puede crear tareas, timers y pomodoros, conversación por voz (Whisper + TTS) y una mascota animada.
 
 ## Primer uso
 
@@ -14,7 +14,8 @@ Sin `env.json` la app funciona en modo local: pide una API key de Groq (gratis e
 Requisitos por plataforma:
 - **Windows:** activar el Modo desarrollador (`start ms-settings:developers`), Flutter lo necesita para enlazar plugins. Además `flutter_tts` necesita `nuget.exe` en el PATH (`winget install Microsoft.NuGet`).
 - **Android:** aceptar licencias con `flutter doctor --android-licenses`.
-- **Linux:** `sudo apt install libsecret-1-dev libjsoncpp-dev` para el almacén seguro de la key.
+- **Linux:** `sudo apt install libsecret-1-dev libjsoncpp-dev` para el almacén seguro de la sesión, y `sudo apt install pulseaudio-utils ffmpeg` para la entrada de voz.
+- **Android:** la primera vez que tocas el micrófono, la app pide el permiso de grabar audio.
 
 ## Estructura
 

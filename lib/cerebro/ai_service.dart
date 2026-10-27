@@ -21,6 +21,11 @@ abstract interface class ChatBackend {
   });
 }
 
+/// Convierte un audio en texto. Separado de [ChatBackend] para probar sin red.
+abstract interface class Transcriber {
+  Future<String> transcribe(String audioPath);
+}
+
 /// Dónde se llama a la API compatible con OpenAI y con qué cabeceras.
 class AiEndpoint {
   const AiEndpoint(this.baseUrl, this.headers, {this.viaProxy = false});
@@ -33,7 +38,7 @@ class AiEndpoint {
   final bool viaProxy;
 }
 
-class AIService implements ChatBackend {
+class AIService implements ChatBackend, Transcriber {
   AIService({
     ApiKeyStore? keyStore,
     http.Client Function()? clientFactory,
@@ -224,6 +229,46 @@ class AIService implements ChatBackend {
 
       final text = delta['content'] as String?;
       if (text != null && text.isNotEmpty) yield text;
+    }
+  }
+
+  static const String transcriptionModel = 'whisper-large-v3-turbo';
+
+  /// Transcribe la voz del usuario con Whisper (vía el proxy si hay sesión).
+  @override
+  Future<String> transcribe(String audioPath) async {
+    final endpoint = await _endpoint();
+    final client = _clientFactory();
+    try {
+      final request = http.MultipartRequest(
+        'POST',
+        Uri.parse('${endpoint.baseUrl}/audio/transcriptions'),
+      )
+        ..headers.addAll(endpoint.headers)
+        ..fields['model'] = transcriptionModel
+        ..fields['language'] = 'es'
+        ..fields['response_format'] = 'json'
+        ..files.add(await http.MultipartFile.fromPath('file', audioPath));
+
+      final response = await http.Response.fromStream(
+        await client.send(request).timeout(Duration(seconds: Config.httpTimeoutSeconds)),
+      );
+      if (response.statusCode != 200) {
+        throw _errorFor(response.statusCode, response.body, viaProxy: endpoint.viaProxy);
+      }
+      final json = jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
+      return (json['text'] as String? ?? '').trim();
+    } on TimeoutException {
+      throw const AIException(AIErrorKind.timeout);
+    } on http.ClientException {
+      throw const AIException(AIErrorKind.network);
+    } on AIException {
+      rethrow;
+    } catch (e) {
+      debugPrint('Error al transcribir: $e');
+      throw AIException(AIErrorKind.unknown, e.toString());
+    } finally {
+      client.close();
     }
   }
 
